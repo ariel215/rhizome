@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 from tcod.ecs import Entity, callbacks
+from typing import Final
+import numpy as np
 
 @dataclass(frozen=True)
 class Vector:
@@ -10,7 +12,18 @@ class Vector:
         return type(self)(self.x + other.x, self.y + other.y)
     
 
-@callbacks.register_component_changed
+
+
+@dataclass(frozen=True)
+class Graphic:
+    ch: int = ord("!")
+    fg: tuple[int, int, int] = (255,255,255)
+
+Gold: Final = ("Gold", int)
+Position: Final = ("Position", Vector)
+Map: Final = ("Map", np.array)
+
+@callbacks.register_component_changed(component=Position)
 def on_vector_changed(entity: Entity, old: Vector | None, new: Vector | None):
     if old == new:
         return

@@ -1,20 +1,8 @@
 import numpy as np
+import tcod
 
-def init_map(rows: int, columns: int, threshold: float) -> np.array:
-    """
-    Return a grid of random points of shape (rows, columns) where the chance that a point 
-    is 1 is `threshold`
 
-    For best results, threshold should be between 0.4 and 0.6
-    """
-
-def generation(map: np.array, closed:bool=False):
-    """
-    Iterate 1 generation of the 4-5 cellular automaton rule
-    on map. If closed, pad the edges with 1s; otherwise, with 0s
-    """
-
-def create_map(rows, columns, threshold, closed=False):
+def create_map(height, width, wall_threshold, closed=False) -> np.array:
     """
     Create a map using the 4-5 cellular automaton rule
     
@@ -24,7 +12,7 @@ def create_map(rows, columns, threshold, closed=False):
     closed: Whether the edges of the map should be closed (padded with walls)
         or left open
     """
-    map = np.random.random((rows, columns)) <= threshold
+    map = np.random.random((height, width)) <= wall_threshold
     iterating = True
     n_iters = 0
     while iterating and n_iters < 10:
@@ -42,6 +30,17 @@ def create_map(rows, columns, threshold, closed=False):
         map = new_map
         n_iters += 1
     return map
+
+
+def to_rgb(map, wall, floor, fg = (255,255,255), bg = (0,0,0)) -> np.array:
+    new = np.zeros(map.shape, dtype=tcod.console.rgb_graphic)
+    is_wall = map.nonzero()
+    new['ch'][is_wall] = wall
+    new['ch'][not is_wall] = floor
+    new['fg'] = fg
+    new['bg'] = bg
+    return new
+
 
 def to_string(map: np.array, wall="x", floor="."):
     """
