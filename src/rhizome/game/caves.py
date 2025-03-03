@@ -1,6 +1,6 @@
 import numpy as np
 import tcod
-
+from rhizome.game.components import Graphic
 
 def create_map(height, width, wall_threshold, closed=False) -> np.array:
     """
@@ -32,13 +32,12 @@ def create_map(height, width, wall_threshold, closed=False) -> np.array:
     return map
 
 
-def to_rgb(map, wall, floor, fg = (255,255,255), bg = (0,0,0)) -> np.array:
+def to_rgb(map, wall:Graphic, floor: Graphic)  -> np.array:
     new = np.zeros(map.shape, dtype=tcod.console.rgb_graphic)
-    is_wall = map.nonzero()
-    new['ch'][is_wall] = wall
-    new['ch'][not is_wall] = floor
-    new['fg'] = fg
-    new['bg'] = bg
+    is_wall = map != 0
+    new['ch'][is_wall] = wall.ch
+    new['ch'][~is_wall] = floor.ch
+    new['fg'] = floor.fg
     return new
 
 

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from tcod.ecs import Entity, callbacks
-from typing import Final
+import tcod.ecs
+from typing import Final, Tuple
 import numpy as np
 
 @dataclass(frozen=True)
@@ -8,10 +9,12 @@ class Vector:
     x: int
     y: int
 
-    def __add__(self, other: "Vector"):
-        return type(self)(self.x + other.x, self.y + other.y)
-    
-
+    def __add__(self, other: "Vector" | Tuple[int, int]):
+        match other:
+            case Vector(x=x,y=y):
+                return type(self)(self.x + x, self.y + y)
+            case (x,y):
+                return type(self)(self.x + x, self.y + y)
 
 
 @dataclass(frozen=True)
