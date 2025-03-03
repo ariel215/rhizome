@@ -1,4 +1,14 @@
+debug = true
+
 [map]
 height = 100
 width = 100
 wall_threshold = 0.42
+
+[camera]
+height = 40
+width = 40
+tracking_radius = 3
+
+
+

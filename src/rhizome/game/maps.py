@@ -2,7 +2,7 @@ import numpy as np
 import tcod
 from rhizome.game.components import Graphic
 
-def create_map(height, width, wall_threshold, closed=False) -> np.array:
+def create_map(height, width, wall_threshold, closed=False) -> np.ndarray:
     """
     Create a map using the 4-5 cellular automaton rule
     
@@ -32,7 +32,7 @@ def create_map(height, width, wall_threshold, closed=False) -> np.array:
     return map
 
 
-def to_rgb(map, wall:Graphic, floor: Graphic)  -> np.array:
+def to_rgb(map, wall:Graphic, floor: Graphic)  -> np.ndarray:
     new = np.zeros(map.shape, dtype=tcod.console.rgb_graphic)
     is_wall = map != 0
     new['ch'][is_wall] = wall.ch

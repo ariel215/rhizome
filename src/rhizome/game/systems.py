@@ -1,6 +1,9 @@
 from tcod.ecs import Registry, Entity
-from .components import Vector, Position, Map
-from rhizome.game.world import get_world, get_player
+from .components import BoundingBox, Vector, Position, Map, Camera, Graphic
+from rhizome.game.world import FloorTile, WallTile, get_world, get_player
+from rhizome.game import maps
+import numpy as np
+import math
 
 def collide_entity(entity: Entity, direction: Vector) -> Entity | None:
     """
@@ -29,5 +32,22 @@ def collide_entity(entity: Entity, direction: Vector) -> Entity | None:
         return None
     
 
-def move_player(direction):
+def move_player(direction: Vector):
     collide_entity(get_player(),  direction=direction)
+
+
+def move_camera(direction: Vector):
+    world = get_world()
+    player = get_player()
+    player_position = player.components[Position]
+    cam_ent, = world.Q.all_of(components=[Camera])
+    
+    camera = cam_ent.components[Camera]
+    cam_position = cam_ent.components[Position]
+    center = camera.bounding_box(cam_position).center
+    new_position = cam_position + direction
+    new_fov = BoundingBox.from_top_left(new_position, height = camera.height, width=camera.width)
+    map = world[None].components[Map]
+    map_box = BoundingBox(Vector(0,0), Vector(map.shape[1], map.shape[0]))
+    if new_fov.top_left in map_box and new_fov.bottom_right in map_box:
+        cam_ent.components[Position] = new_position

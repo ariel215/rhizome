@@ -1,7 +1,9 @@
 from typing import Final
 from tcod.event import KeySym, KeyboardEvent, Quit
-from rhizome.game import systems
-
+from rhizome.game import maps, systems
+from rhizome.game.components import Camera, Graphic, Map, Position, Vector
+from rhizome.game.world import FloorTile, WallTile, get_world
+from tcod.console import Console
 
 
 class GameState:
@@ -42,14 +44,39 @@ class GameState:
         KeySym.n: (1, 1),
     }
 
+    def __init__(self, settings):
+        self.console = Console(width=settings["map"]["width"], height=settings["map"]["height"])
+
     def on_event(self, event):
         match event:
             case KeyboardEvent(sym=key_sim, type=type_):
                 if type_ == "KEYDOWN" and key_sim in self.DIRECTION_KEYS:
-                    systems.move_player(self.DIRECTION_KEYS[key_sim])
+                    movement_direction = Vector(*self.DIRECTION_KEYS[key_sim])
+                    systems.move_player(movement_direction)
+                    
+                    systems.move_camera(movement_direction)
                 elif key_sim == KeySym.ESCAPE:
                     raise SystemExit
             case Quit():
-                print(event)
                 raise SystemExit
-        
+
+
+    def draw(self, console: Console):
+        world = get_world()
+        (cam_ent,) = world.Q.all_of(components=[Camera])
+        camera = cam_ent.components[Camera]
+        position = cam_ent.components[Position]
+        bounds = camera.bounding_box(position)
+
+        map = world[None].components[Map]
+
+        self.console.rgb[:] = maps.to_rgb(map, wall=WallTile, floor=FloorTile)
+        char_channel = self.console.rgb['ch']
+        fg_channel = self.console.rgb['fg']
+        for entity in world.Q.all_of(components=[Graphic,Position]):
+            position = entity.components[Position]
+            if position in bounds:
+                graphic = entity.components[Graphic]
+                char_channel[position.y, position.x] = graphic.ch
+                fg_channel[position.y, position.x] = graphic.fg
+        console.rgb[:camera.height, :camera.width] = self.console.rgb[bounds.top:bounds.bottom, bounds.left:bounds.right]
