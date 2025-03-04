@@ -1,4 +1,0 @@
-numpy>=2.2.3
-pytest>=8.3.5
-tcod>=16.2.3
-tcod-ecs>=5.2.3

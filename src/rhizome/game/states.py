@@ -1,13 +1,15 @@
+from collections import defaultdict
 from dataclasses import dataclass
-from typing import Final, List, Callable, Tuple
+from typing import Final, List, Callable
 import tcod.constants
 from tcod.event import KeySym, KeyboardEvent, Quit
-from rhizome.game import maps, systems
-from rhizome.game.components import BoundingBox, Camera, Graphic, Map, Position, Vector
-from rhizome.game.world import FloorTile, WallTile, get_world, new_world
+from rhizome.game import maps, systems, tags
+from rhizome.game.components import Camera, Graphic, Map, Position, Vector
+from rhizome.game.world import FloorTile, WallTile, get_player, get_world, create_world, settings
 from tcod.console import Console
 from rhizome.game.state_manager import Push, Pop
-import logging
+
+__all__ = ["GameState", "MenuState"]
 
 class GameState:
     
@@ -45,9 +47,11 @@ class GameState:
         KeySym.b: (-1, 1),
         KeySym.u: (1, -1),
         KeySym.n: (1, 1),
+        # Wait
+        KeySym.SPACE: (0,0)
     }
 
-    def __init__(self, settings):
+    def __init__(self):
         self.console = Console(width=settings["map"]["width"], height=settings["map"]["height"])
 
     def on_event(self, event):
@@ -64,6 +68,13 @@ class GameState:
                 raise SystemExit
 
 
+    def draw_entity(self, entity):
+        position = entity.components[Position]
+        graphic = entity.components[Graphic]
+        self.console.rgb['ch'][position.y, position.x] = graphic.ch
+        self.console.rgb['fg'][position.y, position.x] = graphic.fg
+
+
     def draw(self, console: Console):
         world = get_world()
         (cam_ent,) = world.Q.all_of(components=[Camera])
@@ -74,15 +85,31 @@ class GameState:
         map = world[None].components[Map]
 
         self.console.rgb[:] = maps.to_rgb(map, wall=WallTile, floor=FloorTile)
-        char_channel = self.console.rgb['ch']
-        fg_channel = self.console.rgb['fg']
         for entity in world.Q.all_of(components=[Graphic,Position]):
-            position = entity.components[Position]
-            if position in bounds:
-                graphic = entity.components[Graphic]
-                char_channel[position.y, position.x] = graphic.ch
-                fg_channel[position.y, position.x] = graphic.fg
+            if tags.Player not in entity.tags:
+                self.draw_entity(entity)
+        self.draw_entity(get_player())
+        
         console.rgb[:camera.height, :camera.width] = self.console.rgb[bounds.top:bounds.bottom, bounds.left:bounds.right]
+
+
+class InfoState:
+    def __init__(self, cursor_position: Vector):
+        self.cursor = cursor_position
+
+    def on_event(self, event):
+        world = get_world()
+        map = world[None].components[Map]
+        match event:
+            case KeyboardEvent(sym=sym, type="KEYDOWN"):
+                direction = GameState.DIRECTION_KEYS.get(sym)
+                if direction is not None:
+                    self.cursor += direction
+                    self.cursor = self.cursor.clamp(Vector(0,0), Vector(map.shape[1],map.shape[0]))          
+                
+
+    def draw(self, console: Console):
+        console.draw_frame(self.cursor.x-1, self.cursor.y-1, 3,3)
 
 
 class MenuState:
@@ -147,7 +174,7 @@ def main_menu():
     def exit():
         raise SystemExit
     continue_  =MenuState.MenuItem("Continue", lambda: Pop())
-    restart = MenuState.MenuItem("Restart", new_world)
+    restart = MenuState.MenuItem("Restart", create_world)
     quit = MenuState.MenuItem("Quit", exit)
 
     return MenuState([continue_, restart, quit],Vector(10,10))

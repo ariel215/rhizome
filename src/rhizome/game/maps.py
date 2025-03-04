@@ -11,6 +11,8 @@ def create_map(height, width, wall_threshold, closed=False) -> np.ndarray:
     threshold: the initial threshold for assigning a wall
     closed: Whether the edges of the map should be closed (padded with walls)
         or left open
+
+    returns: an array where impassible blocks are True and open terrain is False
     """
     map = np.random.random((height, width)) <= wall_threshold
     iterating = True

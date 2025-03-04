@@ -7,6 +7,8 @@ from .maps import create_map, to_rgb
 from .tags import *
 from typing import Dict
 import rhizome.game.strategies as strategies
+import tomllib
+import pkgutil
 
 WallTile = Graphic("X")
 FloorTile = Graphic(".")
@@ -17,10 +19,31 @@ player: Entity
 """ The player in the game"""
 
 world: Registry
-""" The global ECS registry"""   
+""" The global ECS registry"""
+
+settings: Dict = tomllib.loads(
+    pkgutil.get_data("rhizome.data", "settings.toml").decode()
+)
+
+def add_player(world, position, graphic, stats):
+    player = world.new_entity()
+    player.components[Position] = position
+    player.components[Graphic] = graphic
+    player.components[Stats] = stats
+    player.components[Name] = "Player"
+    player.tags |= {Player, Actor, Solid}
+    return player    
 
 
-def new_world(settings: Dict) -> Registry:
+def add_item(world: Registry, position, graphic, tags, name=""):
+    item = world.new_entity()
+    item.components[Position] = position
+    item.components[Graphic] = graphic
+    item.components[Name] = name
+    item.tags |= {Item} | tags
+
+
+def create_world() -> Registry:
     global world
     world = Registry()
     # global RNG
@@ -41,14 +64,11 @@ def new_world(settings: Dict) -> Registry:
     # initialize the player
     global player
     player_settings = settings["player"]
-    player = world.new_entity()
     player_position = get_position()
-    player.components[Position] = player_position
-    player.components[Graphic] = Graphic(**player_settings["graphic"])
-    player.components[Stats] = Stats(player_settings["health"],player_settings["health"],player_settings["strength"])
+    graphic = Graphic(**player_settings["graphic"])
+    stats = Stats(player_settings["health"],player_settings["health"],player_settings["strength"])
+    player = add_player(world, player_position, graphic, stats)
     
-    
-    player.tags |= {Player, Actor}
 
     for (enemy_kind, enemy_settings) in settings['enemy'].items():
         for _ in range(10):
@@ -58,6 +78,7 @@ def new_world(settings: Dict) -> Registry:
             enemy.components[Graphic] = Graphic(**enemy_settings["graphic"])
             enemy.components[strategies.Strategy] = strategies.STRATEGIES[enemy_kind]()
             enemy.tags |= {Actor, Enemy, enemy_kind, Solid}
+            enemy.components[Name] = enemy_kind
 
 
     # camera

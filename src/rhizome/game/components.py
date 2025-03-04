@@ -6,7 +6,7 @@ from typing import Final, Tuple
 import numpy as np
 
 __all__ = ["Vector", "Position", "BoundingBox", "Camera", 
-           "Graphic", "Map", "Stats",
+           "Graphic", "Map", "Stats", "Name",
            "on_vector_changed", "move_inside"
            ]
 
@@ -54,6 +54,20 @@ class Vector:
     
     def __str__(self):
         return f"Vector({self.x}, {self.y})"
+    
+
+    def clamp(self, min: "Vector", max: "Vector")->"Vector":
+        """
+        Return a new vector with components restricted to lie 
+        between `min` (inclusivee) and `max` (exclusive)
+
+        Prereqs: `min.x < max.x` and `min.y < max.y`
+
+        """
+        return Vector(
+            x=min(max.x-1,max(min.x,self.x)),
+            y=min(max.y-1,max(min.y,self.y))
+        )
 
 Position: Final = ("Position", Vector)
 
@@ -177,8 +191,17 @@ class Graphic:
     
 Map: Final = ("Map", np.ndarray)
 
-@dataclass(frozen=True)
+@dataclass
 class Stats: 
     health: int
     max_health: int
     strength: int
+    damage_range: Tuple[int,int] = (0,0) # variability of damage
+    toughness: int = 0 # reduces damage taken by X
+    venom: int = 0 # chance to paralyze 
+    toxicity: int = 0 # deal damage when hit
+    camoflauage: int = 0 # makes it harder to be seen
+
+
+Name: Final = ("Name", str)
+

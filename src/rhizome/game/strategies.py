@@ -33,21 +33,23 @@ class Strategy(Protocol):
     def movement(self, entity) -> Vector:
         ...
 
-
 def move_towards(entity: Vector, target: Vector) -> Vector:
-    world = rhizome.game.world.get_world()
+    world = rhizome.game.world.world
     map = world[None].components[Map]
-    cost = map.copy()
+    cost = ~map
     for object in world.Q.all_of(components=[Position], tags=[Solid]):
         position = object.components[Position]
-        cost[position.y, position.x] = True
-    
+        if position != target:
+            cost[position.y, position.x] = 0
+        
     graph = SimpleGraph(cost=cost,cardinal=1,diagonal=0)
     pathfinder = Pathfinder(graph)
     pathfinder.add_root((entity.y, entity.x))
     path = pathfinder.path_to((target.y, target.x))
-    return Vector(*path[0])
-
+    if len(path) > 1:
+        return Vector(path[1][1], path[1][0]) - entity
+    else:
+        return Vector(0,0)
 
 @dataclass
 class SpiderStrategy:
@@ -58,7 +60,7 @@ class SpiderStrategy:
         position = entity.components[Position]
 
         match self.state:
-            case Waiting():
+            case Waiting(_):
                 return Vector(0,0)
             case Hunting() | Fighting():
                 target = rhizome.game.world.player.components[Position]
@@ -67,6 +69,7 @@ class SpiderStrategy:
                 rng = entity.registry[None].components[Random]
                 direction = rng.choice([(-1,0),(1,0),(0,1),(0,-1)])
                 return Vector(*direction)
+        raise ValueError(f"Unable to match state {self.state}")
 
     def next_state(self, entity: Entity)->"SpiderStrategy":
         world = entity.registry
@@ -86,7 +89,7 @@ class SpiderStrategy:
                 if adjacent:
                     return SpiderStrategy(Fighting())
                 elif not visible:
-                    return Waiting(turns_left=4)
+                    return SpiderStrategy(Waiting(4))
             case Fighting():
                 if not adjacent:
                     return SpiderStrategy(Hunting())
@@ -94,7 +97,7 @@ class SpiderStrategy:
                 if visible:
                     return SpiderStrategy(Hunting())
                 elif turns_left > 0:
-                    return SpiderStrategy(turns_left - 1)
+                    return SpiderStrategy(Waiting(turns_left - 1))
                 else:
                     return SpiderStrategy(Wandering())
         return self
@@ -147,6 +150,7 @@ class PillbugStrategy:
                 direction = rng.choice([(-1,0),(1,0),(0,1),(0,-1)])
                 return Vector(*direction)
 
+        raise ValueError(f"Unable to match state {self.state}")
 
                 
 STRATEGIES = {

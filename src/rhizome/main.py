@@ -2,9 +2,8 @@
 
 from tcod import context as tcontext, tileset, console as tconsole, event as tevent
 from .game import states
-from .game.world import new_world
+from .game.world import create_world
 import pathlib
-import tomllib
 from rhizome.game.state_manager import *
 
 COLUMNS = 100
@@ -21,12 +20,10 @@ def main():
         rows=16,
         charmap=tileset.CHARMAP_CP437
     )
-    with open(HERE / "data" / "settings.toml", "rb") as fp:
-        settings = tomllib.load(fp)
     tileset.procedural_block_elements(tileset=tiles)
     console = tconsole.Console(ROWS,COLUMNS)
-    _  = new_world(settings)
-    state_manager = StateManager(states.GameState(settings))
+    create_world()
+    state_manager = StateManager(states.GameState())
     with tcontext.new(rows=ROWS, columns=COLUMNS,tileset=tiles) as ctx:
         while True:
             for event in tevent.wait():
