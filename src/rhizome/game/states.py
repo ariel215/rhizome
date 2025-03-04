@@ -1,10 +1,13 @@
-from typing import Final
+from dataclasses import dataclass
+from typing import Final, List, Callable, Tuple
+import tcod.constants
 from tcod.event import KeySym, KeyboardEvent, Quit
 from rhizome.game import maps, systems
-from rhizome.game.components import Camera, Graphic, Map, Position, Vector
-from rhizome.game.world import FloorTile, WallTile, get_world
+from rhizome.game.components import BoundingBox, Camera, Graphic, Map, Position, Vector
+from rhizome.game.world import FloorTile, WallTile, get_world, new_world
 from tcod.console import Console
-
+from rhizome.game.state_manager import Push, Pop
+import logging
 
 class GameState:
     
@@ -53,10 +56,9 @@ class GameState:
                 if type_ == "KEYDOWN" and key_sim in self.DIRECTION_KEYS:
                     movement_direction = Vector(*self.DIRECTION_KEYS[key_sim])
                     systems.move_player(movement_direction)
-                    
                     systems.move_camera(movement_direction)
                 elif key_sim == KeySym.ESCAPE:
-                    raise SystemExit
+                    return Push(main_menu())
             case Quit():
                 raise SystemExit
 
@@ -80,3 +82,72 @@ class GameState:
                 char_channel[position.y, position.x] = graphic.ch
                 fg_channel[position.y, position.x] = graphic.fg
         console.rgb[:camera.height, :camera.width] = self.console.rgb[bounds.top:bounds.bottom, bounds.left:bounds.right]
+
+
+class MenuState:
+    @dataclass 
+    class MenuItem:
+        name: str
+        action: Callable
+
+
+    def __init__(self, items: List[MenuItem], position: Vector, name: str = "", n_parents = 0):
+        self.items = items
+        self.cursor = 0
+        self.position = position
+        self.name = name
+        self.height = len(self.items)
+        self.width = max([len(item.name) for item in self.items] + [len(self.name)]) + 3
+        self.n_parents = n_parents
+
+
+    def advance(self):
+        if self.cursor < len(self.items) - 1:
+            self.cursor += 1
+        
+    def reverse(self):
+        if self.cursor > 0:
+            self.cursor -= 1
+
+    @property
+    def current(self):
+        return self.items[self.cursor]
+    
+    def select(self):
+        return self.current.action()
+    
+    def draw(self, console: Console):
+        item_names = [item.name for item in self.items]
+        item_names[self.cursor] = "> " + self.current.name
+
+        console.draw_frame(self.position.x, self.position.y, self.width+2, self.height+2)
+        console.print_box(self.position.x, self.position.y, self.width+2, 1, 
+                      self.name, alignment=tcod.constants.CENTER)
+        console.print(
+            self.position.x + 1, self.position.y + 1,
+            "\n".join(item_names)
+        )
+
+    def on_event(self,event):
+        match event:
+            case KeyboardEvent(sym=key_sim, type="KEYDOWN", repeat=False):
+                match key_sim:
+                    case KeySym.UP | KeySym.w: 
+                        return self.reverse()
+                    case KeySym.DOWN | KeySym.s:
+                        return self.advance()
+                    case KeySym.KP_ENTER | KeySym.RETURN | KeySym.RETURN2: 
+                        return self.select()
+                    case KeySym.ESCAPE:
+                        print("Escape")
+                        return [Pop() for _ in range(self.n_parents + 1)]
+                    
+
+def main_menu():
+    def exit():
+        raise SystemExit
+    continue_  =MenuState.MenuItem("Continue", lambda: Pop())
+    restart = MenuState.MenuItem("Restart", new_world)
+    quit = MenuState.MenuItem("Quit", exit)
+
+    return MenuState([continue_, restart, quit],Vector(10,10))

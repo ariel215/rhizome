@@ -32,7 +32,6 @@ def new_world(settings: Dict) -> Registry:
     free_positions = [idx for idx, value in np.ndenumerate(map) if not value]
     world[None].components[Map] = map
 
-
     # initialize the player
     global player
     player = world.new_entity()

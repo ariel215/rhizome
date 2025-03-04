@@ -1,14 +1,11 @@
 #! python3 
 
 from tcod import context as tcontext, tileset, console as tconsole, event as tevent
-import tcod.ecs
-from .game import components, maps, states
-from .game.components import Vector
-from .game.world import new_world, WallTile, FloorTile
-import rhizome.game.systems as systems
-import rhizome.game.world
+from .game import states
+from .game.world import new_world
 import pathlib
 import tomllib
+from rhizome.game.state_manager import *
 
 COLUMNS = 100
 ROWS = 100
@@ -28,16 +25,14 @@ def main():
         settings = tomllib.load(fp)
     tileset.procedural_block_elements(tileset=tiles)
     console = tconsole.Console(ROWS,COLUMNS)
-    world  = new_world(settings)
+    _  = new_world(settings)
+    state_manager = StateManager(states.GameState(settings))
     with tcontext.new(rows=ROWS, columns=COLUMNS,tileset=tiles) as ctx:
-        state_stack = [states.GameState(settings)]
         while True:
-            ctx.present(console)
             for event in tevent.wait():
-                state_stack[-1].on_event(event)
-            for state in state_stack:
-                state.draw(console)
-
+                state_manager.on_event(event)
+            state_manager.draw(console)
+            ctx.present(console)
 
 
 if __name__ == "__main__":

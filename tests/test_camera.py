@@ -1,6 +1,5 @@
 from rhizome.game.components import move_inside
 from rhizome.game.components import BoundingBox, Vector
-import pytest
 
 
 
