@@ -139,7 +139,6 @@ class MenuState:
                     case KeySym.KP_ENTER | KeySym.RETURN | KeySym.RETURN2: 
                         return self.select()
                     case KeySym.ESCAPE:
-                        print("Escape")
                         return [Pop() for _ in range(self.n_parents + 1)]
                     
 

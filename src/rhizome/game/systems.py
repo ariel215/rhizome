@@ -1,11 +1,12 @@
 from tcod.ecs import Registry, Entity
-from .components import BoundingBox, Vector, Position, Map, Camera, Graphic
+from tcod.ecs.query import BoundQuery
+from .components import *
 from rhizome.game.world import FloorTile, WallTile, get_world, get_player
-from rhizome.game import maps
+from rhizome.game.tags import *
 import numpy as np
 import math
 
-def collide_entity(entity: Entity, direction: Vector) -> Entity | None:
+def collide_entity(entity: Entity, direction: Vector) -> BoundQuery | None:
     """
     Attempts to move an entity in the given direction 
 
@@ -14,28 +15,43 @@ def collide_entity(entity: Entity, direction: Vector) -> Entity | None:
     If there is empty space where the entity is trying to move to: 
         return (True, None) and update the entity's position
     If there is another entity there:
-        - check if collision 
-     
+         
     """
     world = get_world()
     pos = entity.components[Position]
     new_position = pos + direction
     map = world[None].components[Map]
     if map[new_position.y, new_position.x]:
-        return (False, None)
+        return False
     
     collision = world.Q.all_of(tags=[new_position])
-    if collision:
-        return collision[0]
-    else:
+    if not collision.all_of(tags=[Solid]):
         entity.components[Position] = new_position
-        return None
-    
+    return collision    
 
 def move_player(direction: Vector):
-    collide_entity(get_player(),  direction=direction)
+    player = get_player()
+    collision = collide_entity(player,  direction=direction)
+    if collision:
+        obstacles = collision.all_of(tags=[Solid])
+        for obstacle in obstacles:
+            handle_collision(player, obstacle)
 
 
+def handle_collision(collider: Entity, collided: Entity):
+    collider_stats = collider.components.get(Stats)
+    collided_stats = collided.components.get(Stats)
+    if collided_stats and collider_stats:
+        collided.components[Stats] = damage(collider_stats, collided_stats)
+        
+
+def damage(attacker: Stats, attacked: Stats):
+    if attacked.health >0:
+        print(f"dealt {attacker.strength} damage!")
+    new_health = max(attacked.health - attacker.strength,0)
+    return Stats(new_health, attacked.max_health, attacked.strength)
+
+ 
 def move_camera(direction: Vector):
     world = get_world()
     player = get_player()

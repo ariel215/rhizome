@@ -1,6 +1,6 @@
-from tcod.ecs import Registry
+import numpy as np
+from tcod.ecs import Registry, Entity
 from random import Random
-
 from rhizome.game.components import move_inside
 from .components import *
 from .maps import create_map, to_rgb
@@ -8,8 +8,8 @@ from .tags import *
 from typing import Dict
 
 
-WallTile = Graphic(ord("X"))
-FloorTile = Graphic(ord("."))
+WallTile = Graphic("X")
+FloorTile = Graphic(".")
 
 PLAYER_COLOR = [0xc6, 0xd3, 0x13]
 
@@ -32,13 +32,31 @@ def new_world(settings: Dict) -> Registry:
     free_positions = [idx for idx, value in np.ndenumerate(map) if not value]
     world[None].components[Map] = map
 
+    def get_position(condition=None):
+        valid = free_positions if condition is None else [p for p in free_positions if condition(p)]
+        pos = rng.choice(valid)
+        free_positions.remove(pos)
+        return Vector(pos[1], pos[0])
+
     # initialize the player
     global player
+    player_settings = settings["player"]
     player = world.new_entity()
-    player_position = Vector(*(rng.choice(free_positions)))
+    player_position = get_position()
     player.components[Position] = player_position
-    player.components[Graphic] = Graphic(ord("@"), PLAYER_COLOR)
+    player.components[Graphic] = Graphic(**player_settings["graphic"])
+    player.components[Stats] = Stats(player_settings["health"],player_settings["health"],player_settings["strength"])
+    
+    
     player.tags |= {Player, Actor}
+
+    for (enemy_kind, enemy_settings) in settings['enemy'].items():
+        for _ in range(10):
+            enemy = world.new_entity()
+            enemy.components[Position] = get_position()
+            enemy.components[Stats] = Stats(enemy_settings["health"], enemy_settings["health"], enemy_settings["strength"])
+            enemy.components[Graphic] = Graphic(**enemy_settings["graphic"])
+            enemy.tags |= {Actor, Enemy, enemy_kind, Solid}
 
 
     # camera
@@ -49,9 +67,6 @@ def new_world(settings: Dict) -> Registry:
     camera_bounds = move_inside(camera_bounds, map_bounds)
     camera_ent.components[Position] = camera_bounds.top_left
     camera_ent.components[Camera] = camera
-
-    if settings["debug"]:
-        camera_ent.components[Graphic] = Graphic(ord("O"), (255,0,0))
 
     return world
 

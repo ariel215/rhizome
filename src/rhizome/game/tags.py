@@ -1,6 +1,11 @@
 from typing import Final
 
-Player: Final = "Player"
-Actor: Final  = "Actor"
-Item: Final = "Item"
-Enemy: Final = "Enemy"
+Player: Final = "player"
+Actor: Final  = "actor"
+Item: Final = "item"
+Enemy: Final = "enemy"
+Beetle: Final = "beetle"
+PillBug: Final = "pillbug"
+Centipede: Final = "centipede"
+Spider: Final = "spider"
+Solid: Final = "Solid"

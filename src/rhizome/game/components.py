@@ -5,6 +5,12 @@ import tcod.ecs
 from typing import Final, Tuple
 import numpy as np
 
+__all__ = ["Vector", "Position", "BoundingBox", "Camera", 
+           "Graphic", "Map", "Stats",
+           "on_vector_changed", "move_inside"
+           ]
+
+
 @dataclass(frozen=True)
 class Vector:
     x: int
@@ -49,16 +55,7 @@ class Vector:
     def __str__(self):
         return f"Vector({self.x}, {self.y})"
 
-
-
-@dataclass(frozen=True)
-class Graphic:
-    ch: int = ord("!")
-    fg: tuple[int, int, int] = (255,255,255)
-
-Gold: Final = ("Gold", int)
 Position: Final = ("Position", Vector)
-Map: Final = ("Map", np.array)
 
 @callbacks.register_component_changed(component=Position)
 def on_vector_changed(entity: Entity, old: Vector | None, new: Vector | None):
@@ -115,16 +112,6 @@ class BoundingBox:
         return self.top <= point.y <= self.bottom and self.left <= point.x <= self.right
 
 
-@dataclass(frozen=True)
-class Camera: 
-    height: int
-    width: int
-    tracking_radius: int
-
-    def bounding_box(self, position: Vector) -> BoundingBox:
-        return BoundingBox.from_top_left(position, self.height, self.width)
-
-
 def move_inside(box1: BoundingBox, box2: BoundingBox) -> BoundingBox:
     """
     Reposition box 1 so that it is contained inside of box2
@@ -168,3 +155,30 @@ def move_inside(box1: BoundingBox, box2: BoundingBox) -> BoundingBox:
         dy = -d_bottom.y
 
     return BoundingBox(box1.top_left + (dx,dy), box1.bottom_right + (dx,dy))
+
+
+@dataclass(frozen=True)
+class Camera: 
+    height: int
+    width: int
+    tracking_radius: int
+
+    def bounding_box(self, position: Vector) -> BoundingBox:
+        return BoundingBox.from_top_left(position, self.height, self.width)
+
+@dataclass(frozen=True)
+class Graphic:
+    char: str = "!"
+    fg: tuple[int, int, int] = (255,255,255)
+
+    @property
+    def ch(self):
+        return ord(self.char)
+    
+Map: Final = ("Map", np.ndarray)
+
+@dataclass(frozen=True)
+class Stats: 
+    health: int
+    max_health: int
+    strength: int
