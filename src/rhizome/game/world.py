@@ -6,7 +6,7 @@ from .components import *
 from .maps import create_map, to_rgb
 from .tags import *
 from typing import Dict
-
+import rhizome.game.strategies as strategies
 
 WallTile = Graphic("X")
 FloorTile = Graphic(".")
@@ -56,6 +56,7 @@ def new_world(settings: Dict) -> Registry:
             enemy.components[Position] = get_position()
             enemy.components[Stats] = Stats(enemy_settings["health"], enemy_settings["health"], enemy_settings["strength"])
             enemy.components[Graphic] = Graphic(**enemy_settings["graphic"])
+            enemy.components[strategies.Strategy] = strategies.STRATEGIES[enemy_kind]()
             enemy.tags |= {Actor, Enemy, enemy_kind, Solid}
 
 

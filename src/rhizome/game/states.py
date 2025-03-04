@@ -56,6 +56,7 @@ class GameState:
                 if type_ == "KEYDOWN" and key_sim in self.DIRECTION_KEYS:
                     movement_direction = Vector(*self.DIRECTION_KEYS[key_sim])
                     systems.move_player(movement_direction)
+                    systems.move_enemies()
                     systems.move_camera(movement_direction)
                 elif key_sim == KeySym.ESCAPE:
                     return Push(main_menu())

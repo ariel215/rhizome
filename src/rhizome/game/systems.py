@@ -1,12 +1,14 @@
 from tcod.ecs import Registry, Entity
 from tcod.ecs.query import BoundQuery
+
+from rhizome.game.strategies import Strategy
 from .components import *
 from rhizome.game.world import FloorTile, WallTile, get_world, get_player
 from rhizome.game.tags import *
 import numpy as np
 import math
 
-def collide_entity(entity: Entity, direction: Vector) -> BoundQuery | None:
+def collide_entity(entity: Entity, direction: Vector) -> BoundQuery:
     """
     Attempts to move an entity in the given direction 
 
@@ -22,7 +24,7 @@ def collide_entity(entity: Entity, direction: Vector) -> BoundQuery | None:
     new_position = pos + direction
     map = world[None].components[Map]
     if map[new_position.y, new_position.x]:
-        return False
+        return []
     
     collision = world.Q.all_of(tags=[new_position])
     if not collision.all_of(tags=[Solid]):
@@ -50,6 +52,22 @@ def damage(attacker: Stats, attacked: Stats):
         print(f"dealt {attacker.strength} damage!")
     new_health = max(attacked.health - attacker.strength,0)
     return Stats(new_health, attacked.max_health, attacked.strength)
+
+
+def move_enemies():
+    world = get_world()
+    enemies = world.Q.all_of(tags=[Enemy])
+    for enemy in enemies:
+        strategy = enemy.components[Strategy]
+        direction = strategy.movement(enemy)
+        collisions = collide_entity(enemy,direction)
+        for collision in collisions:
+            handle_collision(enemy, collision)
+
+    for enemy in enemies:
+        strategy = enemy.components[Strategy]
+        new_strategy = enemy.components[Strategy].next_state(enemy)
+        enemy.components[Strategy] = new_strategy
 
  
 def move_camera(direction: Vector):

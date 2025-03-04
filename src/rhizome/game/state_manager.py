@@ -28,10 +28,8 @@ class StateManager:
     def update(self, action: StateAction):
         match action:
             case Push(state=state):
-                print("Push")
                 self.states.append(state)
             case Pop():
-                print("Pop")
                 self.states.pop()
             case [*actions]:
                 for action in actions:
