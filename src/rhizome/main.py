@@ -1,10 +1,10 @@
 #! python3 
 
 from tcod import context as tcontext, tileset, console as tconsole, event as tevent
-from .game import states
+from .game import ui_states
 from .game.world import create_world
 import pathlib
-from rhizome.game.state_manager import *
+from rhizome.game.ui_manager import *
 
 COLUMNS = 100
 ROWS = 100
@@ -23,7 +23,7 @@ def main():
     tileset.procedural_block_elements(tileset=tiles)
     console = tconsole.Console(ROWS,COLUMNS)
     create_world()
-    state_manager = StateManager(states.GameState())
+    state_manager = StateManager([ui_states.GameState()])
     with tcontext.new(rows=ROWS, columns=COLUMNS,tileset=tiles) as ctx:
         while True:
             for event in tevent.wait():

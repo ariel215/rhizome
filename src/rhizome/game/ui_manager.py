@@ -22,8 +22,8 @@ class State(Protocol):
         ...
 
 class StateManager:
-    def __init__(self, initial: State):
-        self.states = [initial]
+    def __init__(self, initial_states: List[State]):
+        self.states = initial_states
 
     def update(self, action: StateAction):
         match action:
@@ -45,4 +45,4 @@ class StateManager:
         
     def on_event(self,event: Event):
         action = self.states[-1].on_event(event)
-        self.update(action) 
+        self.update(action)

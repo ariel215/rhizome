@@ -1,13 +1,13 @@
-from collections import defaultdict
 from dataclasses import dataclass
 from typing import Final, List, Callable
 import tcod.constants
 from tcod.event import KeySym, KeyboardEvent, Quit
 from rhizome.game import maps, systems, tags
-from rhizome.game.components import Camera, Graphic, Map, Position, Vector
+from rhizome.game.components import Camera, Graphic, Map, Name, Position, Stats, Vector
 from rhizome.game.world import FloorTile, WallTile, get_player, get_world, create_world, settings
 from tcod.console import Console
-from rhizome.game.state_manager import Push, Pop
+from tcod.ecs import Entity
+from rhizome.game.ui_manager import Push, Pop
 
 __all__ = ["GameState", "MenuState"]
 
@@ -89,7 +89,6 @@ class GameState:
             if tags.Player not in entity.tags:
                 self.draw_entity(entity)
         self.draw_entity(get_player())
-        
         console.rgb[:camera.height, :camera.width] = self.console.rgb[bounds.top:bounds.bottom, bounds.left:bounds.right]
 
 
@@ -178,3 +177,27 @@ def main_menu():
     quit = MenuState.MenuItem("Quit", exit)
 
     return MenuState([continue_, restart, quit],Vector(10,10))
+
+
+
+@dataclass
+class InfoWindow:
+    position: Vector
+    subject: Entity
+    height: int
+    width: int
+
+
+    def draw(self,console: Console):
+        stats = self.subject.components.get(Stats)
+        name = self.subject.components.get(Name,"")
+        console.draw_frame(self.position.x, self.position.y,
+                           self.width, self.height,
+                           name
+                           )
+        if stats:
+            console.print_box(
+                self.position.x + 1, self.position.y+1,
+                self.width - 2, self.height - 2,
+                str(stats))
+        

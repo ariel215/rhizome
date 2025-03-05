@@ -1,3 +1,4 @@
+import random
 from tcod.ecs import Entity
 from tcod.ecs.query import BoundQuery
 
@@ -22,8 +23,6 @@ def collide_entity(entity: Entity, direction: Vector) -> BoundQuery:
     world = entity.registry
     pos = entity.components[Position]
     new_position = pos + direction
-    if new_position == pos:
-        return []
     
     map = world[None].components[Map]
     try:
@@ -34,7 +33,6 @@ def collide_entity(entity: Entity, direction: Vector) -> BoundQuery:
 
     collision = world.Q.all_of(tags=[new_position])
     for obj in collision:
-        print(obj.components[Name])
         if Solid in obj.tags:
             break
     else:
@@ -44,11 +42,21 @@ def collide_entity(entity: Entity, direction: Vector) -> BoundQuery:
 def move_player(direction: Vector):
     player = get_player()
     collision = collide_entity(player,  direction=direction)
-    if collision:
-        obstacles = [ent for ent in collision if Solid in ent.tags]
-        for obstacle in obstacles:
-            handle_collision(player, obstacle)
+    for entity in collision: 
+        if Solid in entity.tags:
+            handle_collision(player, entity)
+        elif direction:
+            handle_trigger(player, entity)
+        else:
+            handle_rest(player, entity)
 
+def handle_trigger(entity1, entity2):
+    pass
+
+def handle_rest(entity1: Entity, entity2: Entity):
+    stats = entity1.components.get(Stats)
+    if stats and Edible in entity2.tags:
+        digest(entity1, entity2)
 
 def handle_collision(collider: Entity, collided: Entity):
     collider_stats = collider.components.get(Stats)
@@ -60,11 +68,11 @@ def handle_collision(collider: Entity, collided: Entity):
             kill(collided)
         
 
-def damage(attacker: Stats, attacked: Stats):
-    if attacked.health >0:
-        print(f"dealt {attacker.strength} damage!")
-    new_health = max(attacked.health - attacker.strength,0)
-    return Stats(new_health, attacked.max_health, attacked.strength)
+def damage(attacker: Stats, attacked: Stats) -> Stats:
+    damage_dealt = attacker.strength + random.randint(*attacker.damage_range) - attacked.toughness
+    attacked.health = max(attacked.health - damage_dealt, 0)
+    return attacked.health
+
 
 def kill(entity: Entity):
     if Player not in entity.tags:
@@ -74,6 +82,12 @@ def kill(entity: Entity):
             corpse_graphic = Graphic(**settings["items"]["corpse"]["graphic"])
             add_item(entity.registry, position=position,graphic=corpse_graphic,tags={Edible}, name=f"{name} corpse")
         entity.clear()
+
+
+def digest(entity: Entity, corpse: Entity):
+    pstats = entity.components[Stats]
+    pstats.health = pstats.max_health
+    corpse.clear() 
 
 
 def move_enemies():
@@ -97,15 +111,25 @@ def move_enemies():
 def move_camera(direction: Vector):
     player = get_player()
     world = player.registry
+    map = world[None].components[Map]
     player_position = player.components[Position]
     cam_ent, = world.Q.all_of(components=[Camera])
-    
-    camera = cam_ent.components[Camera]
+    camera: Camera = cam_ent.components[Camera]
     cam_position = cam_ent.components[Position]
     center = camera.bounding_box(cam_position).center
-    new_position = cam_position + direction
-    new_fov = BoundingBox.from_top_left(new_position, height = camera.height, width=camera.width)
-    map = world[None].components[Map]
-    map_box = BoundingBox(Vector(0,0), Vector(map.shape[1], map.shape[0]))
-    if new_fov.top_left in map_box and new_fov.bottom_right in map_box:
-        cam_ent.components[Position] = new_position
+    tracking_box = camera.tracking_box(center)
+    outside = False
+    match direction:
+        case Vector(1,0):
+            outside = player_position.x >= tracking_box.right
+        case Vector(-1,0):
+            outside = player_position.x < tracking_box.left
+        case Vector(0,1): 
+            outside = player_position.y >= tracking_box.bottom
+        case Vector(0,-1): 
+            outside = player_position.y < tracking_box.top
+    if outside:
+        new_position = cam_position + direction
+        new_fov = camera.bounding_box(new_position)
+        new_fov = move_inside(new_fov, BoundingBox(Vector(0,0),Vector(*map.shape)))
+        cam_ent.components[Position] = new_fov.top_left

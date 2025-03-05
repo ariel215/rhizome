@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from functools import wraps
 from tcod.ecs import Entity, callbacks
-import tcod.ecs
 from typing import Final, Tuple
 import numpy as np
 
@@ -51,6 +50,8 @@ class Vector:
                 return type(self)(self.x // x ,self.y// y)
             case int(s):
                 return type(self)(self.x // s, self.y // s)
+    def __bool__(self):
+        return self.x or self.y
     
     def __str__(self):
         return f"Vector({self.x}, {self.y})"
@@ -68,7 +69,7 @@ class Vector:
             x=min(max.x-1,max(min.x,self.x)),
             y=min(max.y-1,max(min.y,self.y))
         )
-
+    
 Position: Final = ("Position", Vector)
 
 @callbacks.register_component_changed(component=Position)
@@ -80,7 +81,12 @@ def on_vector_changed(entity: Entity, old: Vector | None, new: Vector | None):
     if new is not None:
         entity.tags.add(new)
 
+
 class BoundingBox:
+    """
+    A half-open bounding box, containing its top and left edges
+    but not its bottom and right edges
+    """
 
     def __init__(self, top_left: Vector, bottom_right: Vector):
         self.top_left = top_left
@@ -93,13 +99,22 @@ class BoundingBox:
         return f"BoundingBox({self.top_left}, {self.bottom_right})"
 
     @classmethod
-    def centered(cls: "BoundingBox", point: Vector, height: int, width:int):
-        top_left = point - (height // 2, width // 2)
-        bottom_right = point + (height // 2, width // 2)
+    def centered(cls: "BoundingBox", point: Vector, height: int, width:int) -> "BoundingBox":
+        """
+        Create a bounding box centered on `point` whose interior is 
+        `height` tall and `width` wide
+        
+        """
+        top_left = point - (width // 2, height // 2,)
+        bottom_right = point + (width // 2 + (width % 2), height // 2 + (height % 2), ) 
         return cls(top_left, bottom_right)
     
     @classmethod
-    def from_top_left(cls: "BoundingBox", point:Vector, height: int, width: int):
+    def from_top_left(cls: "BoundingBox", point:Vector, height: int, width: int) -> "BoundingBox":
+        """"
+        Create a bounding box whose top left corner is `point`
+        and whose interior is `height` tall and `width` wide
+        """
         return cls(point, point+(width, height))
 
     @property
@@ -148,6 +163,10 @@ def move_inside(box1: BoundingBox, box2: BoundingBox) -> BoundingBox:
     box1 = [(3,3) (6,6)]
     box2 = [(1,1), (5,5)]
     move_inside(box1, box2) = [(2,2), (5,5)]
+
+    box1 = [(4,4), (10,6)]
+    box2 = [(0,0), (8,8)]
+    move_inside = [(2,4), (8,6)]
     """
 
     # box1.top_left should be greater or equal to box2.top_left in both dimensions
@@ -179,6 +198,9 @@ class Camera:
 
     def bounding_box(self, position: Vector) -> BoundingBox:
         return BoundingBox.from_top_left(position, self.height, self.width)
+    
+    def tracking_box(self, position: Vector) -> BoundingBox: 
+        return BoundingBox.centered(position, self.tracking_radius, self.tracking_radius)
 
 @dataclass(frozen=True)
 class Graphic:
@@ -188,8 +210,6 @@ class Graphic:
     @property
     def ch(self):
         return ord(self.char)
-    
-Map: Final = ("Map", np.ndarray)
 
 @dataclass
 class Stats: 
@@ -202,6 +222,23 @@ class Stats:
     toxicity: int = 0 # deal damage when hit
     camoflauage: int = 0 # makes it harder to be seen
 
+    def __str__(self):
+        healthbar = f"Health: {self.health}/{self.max_health} "
+        healthbar += "|" * ((100 * self.health ) // self.max_health)
+        strength = f"Strength: {self.strength}"
+        lines = [healthbar, strength]
+        if self.toughness:
+            lines += f"Toughness: {self.toughness}"
+        if self.venom:
+            lines += f"Venom: {self.venom}"
+        if self.toxicity: 
+            lines += f"Toxicity: {self.toxicity}"
+        if self.camoflauage:
+            lines += f"Camoflauge: {self.camoflauage}"
+        
+        return "\n".join(lines)
 
+
+Map: Final = ("Map", np.ndarray)
 Name: Final = ("Name", str)
 

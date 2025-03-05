@@ -30,7 +30,7 @@ class Strategy(Protocol):
     def next_state(self, entity) -> "Strategy":
         ...
 
-    def movement(self, entity) -> Vector:
+    def movement(self, entity) -> AiState:
         ...
 
 def move_towards(entity: Vector, target: Vector) -> Vector:
@@ -71,7 +71,7 @@ class SpiderStrategy:
                 return Vector(*direction)
         raise ValueError(f"Unable to match state {self.state}")
 
-    def next_state(self, entity: Entity)->"SpiderStrategy":
+    def next_state(self, entity: Entity)->AiState:
         world = entity.registry
         position = entity.components[Position]
         map = world[None].components[Map]

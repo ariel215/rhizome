@@ -25,7 +25,7 @@ settings: Dict = tomllib.loads(
     pkgutil.get_data("rhizome.data", "settings.toml").decode()
 )
 
-def add_player(world, position, graphic, stats):
+def add_player(world, position, graphic, stats)->Entity:
     player = world.new_entity()
     player.components[Position] = position
     player.components[Graphic] = graphic
@@ -35,12 +35,28 @@ def add_player(world, position, graphic, stats):
     return player    
 
 
-def add_item(world: Registry, position, graphic, tags, name=""):
+def add_item(world: Registry, position, graphic, tags, name="")->Entity:
     item = world.new_entity()
     item.components[Position] = position
     item.components[Graphic] = graphic
     item.components[Name] = name
     item.tags |= {Item} | tags
+
+    return item
+
+
+def add_camera(world: Registry, camera: Camera, position: Vector) -> Entity:
+    map = world[None].components[Map]
+    camera_ent = world.new_entity()
+    camera_bounds = BoundingBox.centered(position, height=camera.height, width=camera.width)
+    map_bounds = BoundingBox(Vector(0,0), Vector(map.shape[1], map.shape[0]))
+    camera_bounds = move_inside(camera_bounds, map_bounds)
+    assert camera_bounds.bottom <= map.shape[0], camera_bounds
+    assert camera_bounds.top >= 0, camera_bounds
+    assert camera_bounds.right <= map.shape[1], camera_bounds
+    camera_ent.components[Position] = camera_bounds.top_left
+    camera_ent.components[Camera] = camera
+    return camera_ent
 
 
 def create_world() -> Registry:
@@ -64,7 +80,7 @@ def create_world() -> Registry:
     # initialize the player
     global player
     player_settings = settings["player"]
-    player_position = get_position()
+    player_position =get_position()
     graphic = Graphic(**player_settings["graphic"])
     stats = Stats(player_settings["health"],player_settings["health"],player_settings["strength"])
     player = add_player(world, player_position, graphic, stats)
@@ -82,14 +98,8 @@ def create_world() -> Registry:
 
 
     # camera
-    camera_ent = world.new_entity()
     camera = Camera(**settings["camera"])
-    camera_bounds = BoundingBox.centered(player_position, height=camera.height, width=camera.width)
-    map_bounds = BoundingBox(Vector(0,0), Vector(map.shape[1], map.shape[0]))
-    camera_bounds = move_inside(camera_bounds, map_bounds)
-    camera_ent.components[Position] = camera_bounds.top_left
-    camera_ent.components[Camera] = camera
-
+    add_camera(world,camera,player_position)
     return world
 
 

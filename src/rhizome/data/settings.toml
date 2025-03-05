@@ -6,9 +6,9 @@ width = 100
 wall_threshold = 0.42
 
 [camera]
-height = 100
-width = 100
-tracking_radius = 3
+height = 40
+width = 60
+tracking_radius = 5
 
 
 [player]
