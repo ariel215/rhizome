@@ -51,7 +51,7 @@ class Vector:
             case int(s):
                 return type(self)(self.x // s, self.y // s)
     def __bool__(self):
-        return self.x or self.y
+        return self.x !=0 or self.y != 0
     
     def __str__(self):
         return f"Vector({self.x}, {self.y})"
@@ -206,6 +206,7 @@ class Camera:
 class Graphic:
     char: str = "!"
     fg: tuple[int, int, int] = (255,255,255)
+    bg: tuple[int, int, int] = (0,0,0)
 
     @property
     def ch(self):

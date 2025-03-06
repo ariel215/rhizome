@@ -5,11 +5,8 @@ from .game import ui_states
 from .game.world import create_world
 import pathlib
 from rhizome.game.ui_manager import *
+from rhizome.game.world import settings
 
-COLUMNS = 100
-ROWS = 100
-THRESHOLD = 0.42
-CLOSED = True
 
 HERE = pathlib.Path(__file__).parent
 
@@ -21,10 +18,10 @@ def main():
         charmap=tileset.CHARMAP_CP437
     )
     tileset.procedural_block_elements(tileset=tiles)
-    console = tconsole.Console(ROWS,COLUMNS)
+    console = tconsole.Console(**settings["screen"])
     create_world()
     state_manager = StateManager([ui_states.GameState()])
-    with tcontext.new(rows=ROWS, columns=COLUMNS,tileset=tiles) as ctx:
+    with tcontext.new(console=console,tileset=tiles) as ctx:
         while True:
             for event in tevent.wait():
                 state_manager.on_event(event)

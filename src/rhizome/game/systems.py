@@ -29,7 +29,7 @@ def collide_entity(entity: Entity, direction: Vector) -> BoundQuery:
         if map[new_position.y, new_position.x]:
             return []
     except IndexError:
-        raise IndexError(f"cannot add {pos} to {direction}: out of bounds")
+        return []
 
     collision = world.Q.all_of(tags=[new_position])
     for obj in collision:
@@ -63,8 +63,8 @@ def handle_collision(collider: Entity, collided: Entity):
     collided_stats = collided.components.get(Stats)
     if collided_stats and collider_stats:
         print(f"{collider.components.get(Name, "(unnamed)")} hit {collided.components.get(Name, "(unnamed)")}")
-        new_stats = collided.components[Stats] = damage(collider_stats, collided_stats)
-        if new_stats.health == 0:
+        collided_stats.health = damage(collider_stats, collided_stats)
+        if collided_stats.health == 0:
             kill(collided)
         
 
@@ -94,9 +94,9 @@ def move_enemies():
     world = get_world()
     enemies = world.Q.all_of(tags=[Enemy])
     for enemy in enemies:
-        strategy = enemy.components[Strategy]
+        strategy = enemy.components.get(Strategy)
         if not strategy:
-            raise ValueError(f"no strategy for entity tagged {enemy.tags}")
+            raise ValueError(f"no strategy for entity {enemy.components[Name]}")
         direction = strategy.movement(enemy)
         collisions = collide_entity(enemy,direction)
         for collision in collisions:

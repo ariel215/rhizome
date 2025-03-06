@@ -59,6 +59,17 @@ def add_camera(world: Registry, camera: Camera, position: Vector) -> Entity:
     return camera_ent
 
 
+def add_hole(world: Registry, position: Vector) -> Entity:
+    """
+    Holes take you deeper into the cave
+    """
+    entity = world.new_entity()
+    entity.components[Position] = position
+    entity.components[Graphic] = Graphic(**settings["hole"]["graphic"])
+    entity.tags |= Hole
+    return entity
+
+
 def create_world() -> Registry:
     global world
     world = Registry()
@@ -80,7 +91,9 @@ def create_world() -> Registry:
     # initialize the player
     global player
     player_settings = settings["player"]
-    player_position =get_position()
+    def top_left(position):
+        return position[0] < map.shape[0] / 3 and position[1] < map.shape[1] / 3
+    player_position =get_position(top_left)
     graphic = Graphic(**player_settings["graphic"])
     stats = Stats(player_settings["health"],player_settings["health"],player_settings["strength"])
     player = add_player(world, player_position, graphic, stats)
@@ -95,6 +108,13 @@ def create_world() -> Registry:
             enemy.components[strategies.Strategy] = strategies.STRATEGIES[enemy_kind]()
             enemy.tags |= {Actor, Enemy, enemy_kind, Solid}
             enemy.components[Name] = enemy_kind
+
+
+    def bottom_left(position):
+        return position[0] > 2 * map.shape[0] / 3 and position[1] > 2 * map.shape[0] / 3
+    
+    hole_position = get_position(bottom_left)
+    add_hole(world, hole_position)
 
 
     # camera

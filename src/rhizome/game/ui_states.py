@@ -73,7 +73,7 @@ class GameState:
         graphic = entity.components[Graphic]
         self.console.rgb['ch'][position.y, position.x] = graphic.ch
         self.console.rgb['fg'][position.y, position.x] = graphic.fg
-
+        self.console.rgb['bg'][position.y, position.x] = graphic.bg
 
     def draw(self, console: Console):
         world = get_world()

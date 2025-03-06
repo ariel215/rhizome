@@ -10,6 +10,10 @@ height = 40
 width = 60
 tracking_radius = 5
 
+[screen]
+height = 40
+width = 80
+
 
 [player]
 health = 20
@@ -36,3 +40,8 @@ fg = [0x98, 0x9b, 0x96]
 [items.corpse.graphic]
 char = "#"
 fg = [0xef,0x2f,0xa9]
+
+
+[hole.graphic]
+char = "O"
+bg = [0x2, 0x2,0x10]
