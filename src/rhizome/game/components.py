@@ -225,7 +225,7 @@ class Stats:
 
     def __str__(self):
         healthbar = f"Health: {self.health}/{self.max_health} "
-        healthbar += "|" * ((100 * self.health ) // self.max_health)
+        healthbar += "|" * ((10 * self.health ) // self.max_health)
         strength = f"Strength: {self.strength}"
         lines = [healthbar, strength]
         if self.toughness:

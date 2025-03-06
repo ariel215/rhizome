@@ -53,6 +53,16 @@ class GameState:
 
     def __init__(self):
         self.console = Console(width=settings["map"]["width"], height=settings["map"]["height"])
+        window_position = Vector(settings["camera"]["width"], 0)
+        subject = get_player()
+        height=settings["screen"]["height"] // 2
+        width=settings["screen"]["width"] - settings["camera"]["width"]
+        self.info_window = InfoWindow(position=window_position,
+                                      subject=subject,
+                                      height=height,
+                                      width=width
+                                      )
+
 
     def on_event(self, event):
         match event:
@@ -90,7 +100,7 @@ class GameState:
                 self.draw_entity(entity)
         self.draw_entity(get_player())
         console.rgb[:camera.height, :camera.width] = self.console.rgb[bounds.top:bounds.bottom, bounds.left:bounds.right]
-
+        self.info_window.draw(console)
 
 class InfoState:
     def __init__(self, cursor_position: Vector):
@@ -200,4 +210,6 @@ class InfoWindow:
                 self.position.x + 1, self.position.y+1,
                 self.width - 2, self.height - 2,
                 str(stats))
+            
+
         

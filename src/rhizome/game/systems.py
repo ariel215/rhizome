@@ -64,8 +64,6 @@ def handle_collision(collider: Entity, collided: Entity):
     if collided_stats and collider_stats:
         print(f"{collider.components.get(Name, "(unnamed)")} hit {collided.components.get(Name, "(unnamed)")}")
         collided_stats.health = damage(collider_stats, collided_stats)
-        if collided_stats.health == 0:
-            kill(collided)
         
 
 def damage(attacker: Stats, attacked: Stats) -> Stats:
@@ -96,17 +94,22 @@ def move_enemies():
     for enemy in enemies:
         strategy = enemy.components.get(Strategy)
         if not strategy:
-            raise ValueError(f"no strategy for entity {enemy.components[Name]}")
+            raise ValueError(f"no strategy for entity {enemy.components.get(Name, "???")}")
         direction = strategy.movement(enemy)
         collisions = collide_entity(enemy,direction)
         for collision in collisions:
             handle_collision(enemy, collision)
+
 
     for enemy in enemies:
         strategy = enemy.components[Strategy]
         new_strategy = enemy.components[Strategy].next_state(enemy)
         enemy.components[Strategy] = new_strategy
 
+    for enemy in enemies: 
+        stats = enemy.components[Stats]
+        if stats.health <= 0:
+            kill(enemy)
  
 def move_camera(direction: Vector):
     player = get_player()

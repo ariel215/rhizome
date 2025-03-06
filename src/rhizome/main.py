@@ -2,7 +2,7 @@
 
 from tcod import context as tcontext, tileset, console as tconsole, event as tevent
 from .game import ui_states
-from .game.world import create_world
+from .game.world import create_world, settings
 import pathlib
 from rhizome.game.ui_manager import *
 from rhizome.game.world import settings
