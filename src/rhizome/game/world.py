@@ -1,3 +1,4 @@
+import itertools
 import numpy as np
 from tcod.ecs import Registry, Entity
 from random import Random
@@ -25,7 +26,11 @@ settings: Dict = tomllib.loads(
     pkgutil.get_data("rhizome.data", "settings.toml").decode()
 )
 
-def add_player(world, position, graphic, stats)->Entity:
+def add_player(world, position)->Entity:
+    player_settings = settings["player"]
+    graphic = Graphic(**player_settings["graphic"])
+    stats = Stats(player_settings["health"],player_settings["health"],player_settings["strength"])
+
     player = world.new_entity()
     player.components[Position] = position
     player.components[Graphic] = graphic
@@ -45,15 +50,13 @@ def add_item(world: Registry, position, graphic, tags, name="")->Entity:
     return item
 
 
-def add_camera(world: Registry, camera: Camera, position: Vector) -> Entity:
+def add_camera(world: Registry, position: Vector) -> Entity:
     map = world[None].components[Map]
+    camera = Camera(**settings["camera"])
     camera_ent = world.new_entity()
     camera_bounds = BoundingBox.centered(position, height=camera.height, width=camera.width)
     map_bounds = BoundingBox(Vector(0,0), Vector(map.shape[1], map.shape[0]))
     camera_bounds = move_inside(camera_bounds, map_bounds)
-    assert camera_bounds.bottom <= map.shape[0], camera_bounds
-    assert camera_bounds.top >= 0, camera_bounds
-    assert camera_bounds.right <= map.shape[1], camera_bounds
     camera_ent.components[Position] = camera_bounds.top_left
     camera_ent.components[Camera] = camera
     return camera_ent
@@ -66,66 +69,80 @@ def add_hole(world: Registry, position: Vector) -> Entity:
     entity = world.new_entity()
     entity.components[Position] = position
     entity.components[Graphic] = Graphic(**settings["hole"]["graphic"])
-    entity.tags |= Hole
+    entity.components[Name] = "Hole"
+    entity.tags |= {Hole}
     return entity
 
 
-def create_world() -> Registry:
-    global world
-    world = Registry()
-    # global RNG
-    rng = world[None].components[Random] = Random()
-    # initialize the map
-    map_settings = settings["map"]
-    map = create_map(closed=True,**map_settings)
-    
-    free_positions = [idx for idx, value in np.ndenumerate(map) if not value]
-    world[None].components[Map] = map
+def take_position(free_positions, condition=None):
+    rng = world[None].components[Random]
+    valid = free_positions if condition is None else [p for p in free_positions if condition(p)]
+    pos = rng.choice(valid)
+    free_positions.remove(pos)
+    return Vector(pos[1], pos[0])
 
-    def get_position(condition=None):
-        valid = free_positions if condition is None else [p for p in free_positions if condition(p)]
-        pos = rng.choice(valid)
-        free_positions.remove(pos)
-        return Vector(pos[1], pos[0])
 
-    # initialize the player
-    global player
-    player_settings = settings["player"]
-    def top_left(position):
-        return position[0] < map.shape[0] / 3 and position[1] < map.shape[1] / 3
-    player_position =get_position(top_left)
-    graphic = Graphic(**player_settings["graphic"])
-    stats = Stats(player_settings["health"],player_settings["health"],player_settings["strength"])
-    player = add_player(world, player_position, graphic, stats)
-    
-
+def populate_enemies(world, open_positions):
     for (enemy_kind, enemy_settings) in settings['enemy'].items():
         for _ in range(10):
             enemy = world.new_entity()
-            enemy.components[Position] = get_position()
+            enemy.components[Position] = take_position(open_positions)
             enemy.components[Stats] = Stats(enemy_settings["health"], enemy_settings["health"], enemy_settings["strength"])
             enemy.components[Graphic] = Graphic(**enemy_settings["graphic"])
             enemy.components[strategies.Strategy] = strategies.STRATEGIES[enemy_kind]()
             enemy.tags |= {Actor, Enemy, enemy_kind, Solid}
             enemy.components[Name] = enemy_kind
 
+def new_level():
+    global player
+    print("building level")
+    map = create_map(closed=True, **settings["map"])
+    world[None].components[Map] = map
+    free_positions = [idx for idx, value in np.ndenumerate(map) if not value]
 
-    def bottom_left(position):
-        return position[0] > 2 * map.shape[0] / 3 and position[1] > 2 * map.shape[0] / 3
-    
-    hole_position = get_position(bottom_left)
+    rng = world[None].components[Random]
+    fns = [lambda p: p[0] < map.shape[0] / 3 and p[1] < map.shape[1] / 3,
+            lambda p: p[0] < map.shape[0] / 3 and p[1] > 2 * map.shape[1] / 3,
+            lambda p: p[0] > 2 * map.shape[0] / 3 and p[1] > 2 * map.shape[1] / 3,
+            lambda p: p[0] > 2 * map.shape[0] / 3 and p[1] < map.shape[1] / 2
+    ]
+    player_corner = rng.randint(0,3)
+    hole_corner = (player_corner + 2) % 4
+    player_position =take_position(free_positions, fns[player_corner])
+    assert player_position 
+    hole_position = take_position(free_positions,fns[hole_corner])
+
+    player_exists = world.Q.all_of(tags=[Player])
+    if player_exists:
+        player.components[Position] = player_position
+    else:
+        player = add_player(world, player_position)
+
+    populate_enemies(world, free_positions)
+    # add_hole(world, player_position + (1,1))
     add_hole(world, hole_position)
 
+    camera_exists = world.Q.all_of(components=[Camera])
+    if camera_exists:
+        cam_ent, = camera_exists
+        cam_ent.clear()
+    add_camera(world,player_position)
 
-    # camera
-    camera = Camera(**settings["camera"])
-    add_camera(world,camera,player_position)
+
+def create_world() -> Registry:
+    global world
+    world = Registry()
+    # global RNG
+    world[None].components[Random] = Random()
+    
+    new_level()
     return world
 
 
 def get_world():
     global world
     return world
+
 
 def get_player():
     global player

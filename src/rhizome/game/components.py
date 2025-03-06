@@ -50,6 +50,7 @@ class Vector:
                 return type(self)(self.x // x ,self.y// y)
             case int(s):
                 return type(self)(self.x // s, self.y // s)
+
     def __bool__(self):
         return self.x !=0 or self.y != 0
     
@@ -243,3 +244,4 @@ class Stats:
 Map: Final = ("Map", np.ndarray)
 Name: Final = ("Name", str)
 
+Depth: Final = ("Depth", int)

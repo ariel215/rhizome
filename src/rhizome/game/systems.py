@@ -4,7 +4,7 @@ from tcod.ecs.query import BoundQuery
 
 from rhizome.game.strategies import Strategy
 from .components import *
-from rhizome.game.world import get_player, get_world, settings, add_item
+from rhizome.game.world import get_player, get_world, new_level, settings, add_item
 from rhizome.game.tags import *
 
 from .components import Name
@@ -42,7 +42,7 @@ def collide_entity(entity: Entity, direction: Vector) -> BoundQuery:
 def move_player(direction: Vector):
     player = get_player()
     collision = collide_entity(player,  direction=direction)
-    for entity in collision: 
+    for entity in collision:
         if Solid in entity.tags:
             handle_collision(player, entity)
         elif direction:
@@ -50,8 +50,16 @@ def move_player(direction: Vector):
         else:
             handle_rest(player, entity)
 
+
 def handle_trigger(entity1, entity2):
-    pass
+    print(f"{entity1.components[Name]} triggered {entity2.components[Name]}")
+    if entity1.components[Name] == "Player":
+        assert Player in entity1.tags
+    if entity2.components[Name] == "Hole":
+        assert Hole in entity2.tags
+    if Player in entity1.tags and Hole in entity2.tags:
+        new_level()
+    
 
 def handle_rest(entity1: Entity, entity2: Entity):
     stats = entity1.components.get(Stats)
