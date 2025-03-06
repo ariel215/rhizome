@@ -1,15 +1,61 @@
 from dataclasses import dataclass
+import itertools
 from typing import Final, List, Callable
 import tcod.constants
 from tcod.event import KeySym, KeyboardEvent, Quit
 from rhizome.game import maps, systems, tags
 from rhizome.game.components import Camera, Graphic, Map, Name, Position, Stats, Vector
-from rhizome.game.world import FloorTile, WallTile, get_player, get_world, create_world, settings
+from rhizome.game.world import FloorTile, WallTile, get_player, get_world, new_level, settings
 from tcod.console import Console
 from tcod.ecs import Entity
-from rhizome.game.ui_manager import Push, Pop
+from rhizome.game.ui_manager import Push, Pop, Update
+from rhizome.game.logging import logger
+
 
 __all__ = ["GameState", "MenuState"]
+
+
+
+@dataclass
+class InfoWindow:
+    position: Vector
+    subject: Entity
+    height: int
+    width: int
+
+
+    def draw(self,console: Console):
+        stats = self.subject.components.get(Stats)
+        name = self.subject.components.get(Name,"")
+        console.draw_frame(self.position.x, self.position.y,
+                           self.width, self.height,
+                           name
+                           )
+        if stats:
+            console.print_box(
+                self.position.x + 1, self.position.y+1,
+                self.width - 2, self.height - 2,
+                str(stats))
+            
+@dataclass
+class HistoryWindow:
+    height: int
+    width: int
+    position: Vector
+
+
+    def draw(self, console: Console):
+        console.draw_frame(
+            self.position.x, self.position.y,
+            self.width, self.height,
+            "History"
+        )
+        log_length = self.height - 5
+        messages = list(itertools.islice(reversed(logger.messages),log_length))
+        for lineno, message in enumerate(reversed(messages)):
+            console.print(self.position.x + 1, self.position.y + 1 + lineno,
+                          message)
+
 
 class GameState:
     
@@ -53,15 +99,20 @@ class GameState:
 
     def __init__(self):
         self.console = Console(width=settings["map"]["width"], height=settings["map"]["height"])
-        window_position = Vector(settings["camera"]["width"], 0)
+        info_window_position = Vector(settings["camera"]["width"], 0)
+        history_position = Vector(settings["camera"]["width"], settings["screen"]["height"]//2)
         subject = get_player()
         height=settings["screen"]["height"] // 2
         width=settings["screen"]["width"] - settings["camera"]["width"]
-        self.info_window = InfoWindow(position=window_position,
+        self.info_window = InfoWindow(position=info_window_position,
                                       subject=subject,
                                       height=height,
                                       width=width
                                       )
+        self.history_window = HistoryWindow(
+            position = history_position,
+            height = height, width=width
+        )
 
 
     def on_event(self, event):
@@ -85,6 +136,10 @@ class GameState:
         self.console.rgb['fg'][position.y, position.x] = graphic.fg
         self.console.rgb['bg'][position.y, position.x] = graphic.bg
 
+    def draw_log(self,console:Console):
+        messages = log_queue[-1:-self.log_length]
+        console.draw_frame(self)
+
     def draw(self, console: Console):
         world = get_world()
         (cam_ent,) = world.Q.all_of(components=[Camera])
@@ -101,6 +156,11 @@ class GameState:
         self.draw_entity(get_player())
         console.rgb[:camera.height, :camera.width] = self.console.rgb[bounds.top:bounds.bottom, bounds.left:bounds.right]
         self.info_window.draw(console)
+        self.history_window.draw(console)
+
+    def update(self, new_subject: Entity, *args,**kwargs):
+        self.info_window.subject = new_subject
+
 
 class InfoState:
     def __init__(self, cursor_position: Vector):
@@ -176,40 +236,21 @@ class MenuState:
                     case KeySym.KP_ENTER | KeySym.RETURN | KeySym.RETURN2: 
                         return self.select()
                     case KeySym.ESCAPE:
-                        return [Pop() for _ in range(self.n_parents + 1)]
+                        return [Pop()] * (self.n_parents + 1)
                     
+    def update(*args, **kwargs):
+        pass
+
 
 def main_menu():
     def exit():
         raise SystemExit
+    def restart():
+        new_level()
+        return [Pop(), Update(new_subject=get_player())]
     continue_  =MenuState.MenuItem("Continue", lambda: Pop())
-    restart = MenuState.MenuItem("Restart", create_world)
+    restart = MenuState.MenuItem("Restart", restart)
     quit = MenuState.MenuItem("Quit", exit)
 
     return MenuState([continue_, restart, quit],Vector(10,10))
 
-
-
-@dataclass
-class InfoWindow:
-    position: Vector
-    subject: Entity
-    height: int
-    width: int
-
-
-    def draw(self,console: Console):
-        stats = self.subject.components.get(Stats)
-        name = self.subject.components.get(Name,"")
-        console.draw_frame(self.position.x, self.position.y,
-                           self.width, self.height,
-                           name
-                           )
-        if stats:
-            console.print_box(
-                self.position.x + 1, self.position.y+1,
-                self.width - 2, self.height - 2,
-                str(stats))
-            
-
-        

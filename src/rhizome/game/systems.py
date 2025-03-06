@@ -6,6 +6,7 @@ from rhizome.game.strategies import Strategy
 from .components import *
 from rhizome.game.world import get_player, get_world, new_level, settings, add_item
 from rhizome.game.tags import *
+from rhizome.game.logging import log
 
 from .components import Name
 
@@ -70,7 +71,7 @@ def handle_collision(collider: Entity, collided: Entity):
     collider_stats = collider.components.get(Stats)
     collided_stats = collided.components.get(Stats)
     if collided_stats and collider_stats:
-        print(f"{collider.components.get(Name, "(unnamed)")} hit {collided.components.get(Name, "(unnamed)")}")
+        log(f"{collider.components.get(Name, "(unnamed)")} hit {collided.components.get(Name, "(unnamed)")}")
         collided_stats.health = damage(collider_stats, collided_stats)
         
 

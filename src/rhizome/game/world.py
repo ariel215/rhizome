@@ -93,7 +93,15 @@ def populate_enemies(world, open_positions):
             enemy.tags |= {Actor, Enemy, enemy_kind, Solid}
             enemy.components[Name] = enemy_kind
 
-def new_level():
+
+
+def new_level() -> Registry:
+    global world
+    world = Registry()
+    # global RNG
+    
+    world[None].components[Random] = Random()
+
     global player
     print("building level")
     map = create_map(closed=True, **settings["map"])
@@ -112,30 +120,13 @@ def new_level():
     assert player_position 
     hole_position = take_position(free_positions,fns[hole_corner])
 
-    player_exists = world.Q.all_of(tags=[Player])
-    if player_exists:
-        player.components[Position] = player_position
-    else:
-        player = add_player(world, player_position)
+    player = add_player(world, player_position)
 
     populate_enemies(world, free_positions)
     # add_hole(world, player_position + (1,1))
     add_hole(world, hole_position)
 
-    camera_exists = world.Q.all_of(components=[Camera])
-    if camera_exists:
-        cam_ent, = camera_exists
-        cam_ent.clear()
     add_camera(world,player_position)
-
-
-def create_world() -> Registry:
-    global world
-    world = Registry()
-    # global RNG
-    world[None].components[Random] = Random()
-    
-    new_level()
     return world
 
 

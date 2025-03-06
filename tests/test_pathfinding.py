@@ -26,7 +26,7 @@ def test_collisions():
     world = Registry()
     world[None].components[Map] = map
 
-    player = add_player(world, Vector(0,0), None, stats=Stats(1,1,1) )
+    player = add_player(world, Vector(0,0) )
     collisions  = systems.collide_entity(player, Vector(0,0))
     assert not collisions
     collisions = systems.collide_entity(player, Vector(1,0))

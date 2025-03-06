@@ -12,13 +12,22 @@ class Push:
 class Pop:
     pass
 
-type StateAction = Push | Pop | None
+class Update:
+    def __init__(self, *args: list, **kwargs: dict):
+        self.args = args
+        self.kwargs = kwargs
+
+
+type StateAction = Push | Pop | Update | None
 
 class State(Protocol):
     def draw(console: Console) -> None: 
         ...
     
     def on_event(event: Event) -> StateAction | List[StateAction]:
+        ...
+
+    def update(*args, **kwargs) -> None:
         ...
 
 class StateManager:
@@ -31,6 +40,8 @@ class StateManager:
                 self.states.append(state)
             case Pop():
                 self.states.pop()
+            case Update(args=args, kwargs=kwargs):
+                self.states[-1].update(*args, **kwargs)
             case [*actions]:
                 for action in actions:
                     self.update(action)

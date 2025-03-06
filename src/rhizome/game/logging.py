@@ -1,8 +1,11 @@
-import logging
-import logging.handlers
-from collections import deque
+class Logger():
+    def __init__(self):
+        self.messages = []
 
-log_queue = deque()
+    def log(self, message):
+        self.messages.append(message)
 
-gameHandler = logging.handlers.QueueHandler(log_queue)
-logging.basicConfig(handlers=[gameHandler])
+logger = Logger()
+
+def log(message):
+    logger.log(message)

@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from rhizome.game.components import Camera, Graphic, Map, move_inside
 from rhizome.game.components import BoundingBox, Vector
-from rhizome.game.world import add_camera, add_player, create_world
+from rhizome.game.world import add_camera, add_player, new_level
 from tcod.ecs import Registry
 
 
@@ -86,8 +86,7 @@ def test_build():
     world = Registry()
     map = np.zeros((10,10))
     world[None].components[Map] = map
-    player = add_player(world, Vector(8,6),Graphic(),None)
-    camera = Camera(6,4,3)
-    add_camera(world, camera, Vector(8,6),)
+    add_player(world, Vector(8,6))
+    add_camera(world, Vector(8,6),)
 
     
