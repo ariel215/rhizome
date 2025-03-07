@@ -19,12 +19,15 @@ def main():
     )
     tileset.procedural_block_elements(tileset=tiles)
     console = tconsole.Console(**settings["screen"])
-    new_level()
-    state_manager = StateManager([ui_states.GameState()])
+    state_manager = UIManager([ui_states.IntroScreen(title="Rhizomatic")])
+    new_level(state_manager)
+
     with tcontext.new(console=console,tileset=tiles) as ctx:
         while True:
             for event in tevent.wait():
                 state_manager.on_event(event)
+                if not state_manager.states:
+                    raise SystemExit
             state_manager.draw(console)
             ctx.present(console)
 

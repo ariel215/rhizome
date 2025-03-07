@@ -1,9 +1,12 @@
 import itertools
+import math
 import numpy as np
 from tcod.ecs import Registry, Entity
 from random import Random
 from rhizome.game.components import move_inside
+from rhizome.game.ui_manager import UIManager
 from .components import *
+from .components import LevelNo
 from .maps import create_map, to_rgb
 from .tags import *
 from typing import Dict
@@ -26,10 +29,10 @@ settings: Dict = tomllib.loads(
     pkgutil.get_data("rhizome.data", "settings.toml").decode()
 )
 
-def add_player(world, position)->Entity:
+def add_player(world, position: Vector, stats: Stats | None = None)->Entity:
     player_settings = settings["player"]
     graphic = Graphic(**player_settings["graphic"])
-    stats = Stats(player_settings["health"],player_settings["health"],player_settings["strength"])
+    stats = stats or Stats(player_settings["health"],player_settings["health"],player_settings["strength"])
 
     player = world.new_entity()
     player.components[Position] = position
@@ -82,25 +85,70 @@ def take_position(free_positions, condition=None):
     return Vector(pos[1], pos[0])
 
 
-def populate_enemies(world, open_positions):
+def get_trait(rng: Random, trait_dict: dict):
+    kinds = list(trait_dict.keys()) + [None]
+    probabilities = list(trait_dict.values())
+    probabilities.append(1 - sum(probabilities))
+    return rng.choices(kinds, probabilities)
+
+def scale(stats, level):
+    factor = math.pow(1.3,level)
+    for stat in vars(stats):
+        value = getattr(stats,stat)
+        match value:
+            case int():
+                value = int(value * factor)
+            case (low, high):
+                value = (low, high + int(factor))
+        setattr(stats, stat,value)
+
+def populate_enemies(world :Registry, open_positions, level_number: int):
+    rng = world[None].components[Random]
     for (enemy_kind, enemy_settings) in settings['enemy'].items():
         for _ in range(10):
             enemy = world.new_entity()
             enemy.components[Position] = take_position(open_positions)
-            enemy.components[Stats] = Stats(enemy_settings["health"], enemy_settings["health"], enemy_settings["strength"])
+            stats = enemy.components[Stats] = Stats(enemy_settings["health"], enemy_settings["health"], enemy_settings["strength"])
             enemy.components[Graphic] = Graphic(**enemy_settings["graphic"])
             enemy.components[strategies.Strategy] = strategies.STRATEGIES[enemy_kind]()
+            trait = enemy.components[Trait] = get_trait(rng,enemy_settings["traits"])
+            acquire_trait(enemy,trait)
+            scale(stats, level_number)
+            enemy.components[Size] = rng.choice(enemy_settings.get("size_range", [1]))
             enemy.tags |= {Actor, Enemy, enemy_kind, Solid}
             enemy.components[Name] = enemy_kind
 
 
 
-def new_level() -> Registry:
+def acquire_trait(entity: Entity, trait: Trait):
+    ent_stats = entity.components[Stats]
+    if trait == Trait.Jaws:
+        ent_stats.strength += 1
+    elif trait == Trait.Shell:
+        ent_stats.toughness += 1
+    elif trait == Trait.Fangs: 
+        ent_stats.damage_range[-1] += 1
+    elif trait == Trait.VenomSacs:
+        ent_stats.venom += 1
+    elif trait == Trait.Bristles:
+        ent_stats.toxicity += 1
+
+
+
+
+def new_level(ui: UIManager | None , new_game: bool = True) -> Registry:
     global world
+    if ui is None:
+        ui = world[None].components[UIManager]
+
     world = Registry()
     # global RNG
     
     world[None].components[Random] = Random()
+
+    world[None].components[UIManager] = ui
+    level_number = 0 if new_game else world[None].components[LevelNo] + 1
+    world[None].components[LevelNo] = level_number
 
     global player
     print("building level")
@@ -119,12 +167,15 @@ def new_level() -> Registry:
     player_position =take_position(free_positions, fns[player_corner])
     assert player_position 
     hole_position = take_position(free_positions,fns[hole_corner])
+    if new_game:
+        player = add_player(world, player_position)
+    else:
+        stats = player.components[Stats]
+        player = add_player(world,player_position,stats)
 
-    player = add_player(world, player_position)
-
-    populate_enemies(world, free_positions)
-    # add_hole(world, player_position + (1,1))
-    add_hole(world, hole_position)
+    populate_enemies(world, free_positions, level_number)
+    add_hole(world, player_position + (1,1))
+    # add_hole(world, hole_position)
 
     add_camera(world,player_position)
     return world

@@ -12,7 +12,7 @@ tracking_radius = 5
 
 [screen]
 height = 40
-width = 80
+width = 100
 
 
 [player]
@@ -25,6 +25,8 @@ fg = [0xc6, 0xd3, 0x13]
 [enemy.spider]
 health = 6
 strength = 3
+size_range = [2,3]
+traits = {shell =0.1, jaws=0.3 }
 [enemy.spider.graphic]
 char = "*"
 fg = [0x89, 0x56, 0x17]
@@ -32,9 +34,30 @@ fg = [0x89, 0x56, 0x17]
 [enemy.pillbug]
 health = 12
 strength = 1
+size_range = [1]
+traits = {shell = 0.5 }
 [enemy.pillbug.graphic]
 char = "∞"
 fg = [0x98, 0x9b, 0x96]
+
+[enemy.centipede]
+health = 10
+strength = 2
+size_range = [2,3,4]
+traits = {bristles = 0.2, fangs = 0.4, "venom sacs" = 0.2}
+[enemy.centipede.graphic]
+char = "$"
+fg = [0x95, 0xc6, 0x39]
+
+
+[enemy.beetle]
+health = 8
+strength  = 3
+size_range = [1,2,2]
+traits = {jaws  = 0.5, shell=0.5}
+[enemy.beetle.graphic]
+char = "Φ"
+fg = [0x47, 0xa5, 0xe0]
 
 
 [items.corpse.graphic]
@@ -44,4 +67,4 @@ fg = [0xef,0x2f,0xa9]
 
 [hole.graphic]
 char = "O"
-bg = [0x2, 0x2,0x10]
+bg = [0xdb,0xd6,0xa4]

@@ -2,13 +2,16 @@ import random
 from tcod.ecs import Entity
 from tcod.ecs.query import BoundQuery
 
+from rhizome.game import world
 from rhizome.game.strategies import Strategy
+from rhizome.game.ui_manager import UIManager
 from .components import *
 from rhizome.game.world import get_player, get_world, new_level, settings, add_item
 from rhizome.game.tags import *
 from rhizome.game.logging import log
 
 from .components import Name
+from .components import Trait
 
 def collide_entity(entity: Entity, direction: Vector) -> BoundQuery:
     """
@@ -40,17 +43,17 @@ def collide_entity(entity: Entity, direction: Vector) -> BoundQuery:
         entity.components[Position] = new_position
     return [ent for ent in collision if ent is not entity]
 
-def move_player(direction: Vector):
+def move_player(direction: Vector) -> Entity:
     player = get_player()
     collision = collide_entity(player,  direction=direction)
     for entity in collision:
         if Solid in entity.tags:
-            handle_collision(player, entity)
+            return handle_collision(player, entity)
         elif direction:
-            handle_trigger(player, entity)
+            return handle_trigger(player, entity)
         else:
-            handle_rest(player, entity)
-
+            return handle_rest(player, entity)
+    return player
 
 def handle_trigger(entity1, entity2):
     print(f"{entity1.components[Name]} triggered {entity2.components[Name]}")
@@ -59,42 +62,63 @@ def handle_trigger(entity1, entity2):
     if entity2.components[Name] == "Hole":
         assert Hole in entity2.tags
     if Player in entity1.tags and Hole in entity2.tags:
-        new_level()
+        new_level(entity1.registry[None].components[UIManager])
+        return get_player()
+    return entity1
     
 
 def handle_rest(entity1: Entity, entity2: Entity):
     stats = entity1.components.get(Stats)
     if stats and Edible in entity2.tags:
         digest(entity1, entity2)
+    return entity1
 
 def handle_collision(collider: Entity, collided: Entity):
     collider_stats = collider.components.get(Stats)
     collided_stats = collided.components.get(Stats)
     if collided_stats and collider_stats:
-        log(f"{collider.components.get(Name, "(unnamed)")} hit {collided.components.get(Name, "(unnamed)")}")
-        collided_stats.health = damage(collider_stats, collided_stats)
-        
+        damage_dealt = damage(collider_stats, collided_stats)
+        log(f"{collider.components.get(Name, "(unnamed)")} dealt {damage_dealt} to {collided.components.get(Name, "(unnamed)")}")
+        collided_stats.health -= damage_dealt
+    return collider
 
-def damage(attacker: Stats, attacked: Stats) -> Stats:
+def damage(attacker: Stats, attacked: Stats) -> int:
     damage_dealt = attacker.strength + random.randint(*attacker.damage_range) - attacked.toughness
-    attacked.health = max(attacked.health - damage_dealt, 0)
-    return attacked.health
+    return min(damage_dealt, attacked.health)
 
 
 def kill(entity: Entity):
-    if Player not in entity.tags:
-        position = entity.components[Position]
-        name = entity.components[Name]
-        if Enemy in entity.tags:
-            corpse_graphic = Graphic(**settings["items"]["corpse"]["graphic"])
-            add_item(entity.registry, position=position,graphic=corpse_graphic,tags={Edible}, name=f"{name} corpse")
-        entity.clear()
+    position = entity.components[Position]
+    name = entity.components[Name]
+    if Enemy in entity.tags:
+        corpse_graphic = Graphic(**settings["items"]["corpse"]["graphic"])
+        corpse = add_item(entity.registry, position=position,graphic=corpse_graphic,tags={Edible}, name=f"{name} corpse")
+        corpse.components[Size] = entity.components.get(Size,1)
+        traits = entity.components.get(Trait)
+        if traits:
+            corpse.components[Trait] = traits
+    entity.clear()
 
+
+def player_dead():
+    player = get_player()
+    return player.components[Stats].health <= 0
+    
 
 def digest(entity: Entity, corpse: Entity):
+    size = corpse.components.get(Size)
     pstats = entity.components[Stats]
-    pstats.health = pstats.max_health
-    corpse.clear() 
+    health_gained = 2 * min(pstats.digestion,size)
+    pstats.health += health_gained
+    size -= health_gained
+    if size == 0:    
+        log(f"consuming {trait} has made you stronger")
+        trait = corpse.components[Trait]
+        world.acquire_trait(entity, trait)
+        corpse.clear() 
+    else:
+        corpse.components[Size] = size
+
 
 
 def move_enemies():

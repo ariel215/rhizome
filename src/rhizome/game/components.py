@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from enum import Enum
 from functools import wraps
 from tcod.ecs import Entity, callbacks
 from typing import Final, Tuple
@@ -6,6 +7,7 @@ import numpy as np
 
 __all__ = ["Vector", "Position", "BoundingBox", "Camera", 
            "Graphic", "Map", "Stats", "Name",
+           "Size", "Trait",
            "on_vector_changed", "move_inside"
            ]
 
@@ -222,7 +224,8 @@ class Stats:
     toughness: int = 0 # reduces damage taken by X
     venom: int = 0 # chance to paralyze 
     toxicity: int = 0 # deal damage when hit
-    camoflauage: int = 0 # makes it harder to be seen
+    camoflauge: int = 0 # makes it harder to be seen
+    digestion: int = 1
 
     def __str__(self):
         healthbar = f"Health: {self.health}/{self.max_health} "
@@ -235,13 +238,24 @@ class Stats:
             lines += f"Venom: {self.venom}"
         if self.toxicity: 
             lines += f"Toxicity: {self.toxicity}"
-        if self.camoflauage:
-            lines += f"Camoflauge: {self.camoflauage}"
+        if self.camoflauge:
+            lines += f"Camoflauge: {self.camoflauge}"
+        if self.digestion > 1:
+            lines += f"Digestion: {self.digestion}"
+        
         
         return "\n".join(lines)
+
+class Trait(Enum):
+    Shell = "shell"
+    Fangs = "fangs"
+    Jaws = "jaws"
+    Bristles = "bristles"
+    VenomSacs = "venom sacs"
 
 
 Map: Final = ("Map", np.ndarray)
 Name: Final = ("Name", str)
-
 Depth: Final = ("Depth", int)
+Size: Final = ("Size", int)
+LevelNo: Final = ("LevelNo", int)

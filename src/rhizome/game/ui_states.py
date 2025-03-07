@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import itertools
-from typing import Final, List, Callable
+from typing import Any, Final, List, Callable
 import tcod.constants
 from tcod.event import KeySym, KeyboardEvent, Quit
 from rhizome.game import maps, systems, tags
@@ -8,12 +8,51 @@ from rhizome.game.components import Camera, Graphic, Map, Name, Position, Stats,
 from rhizome.game.world import FloorTile, WallTile, get_player, get_world, new_level, settings
 from tcod.console import Console
 from tcod.ecs import Entity
-from rhizome.game.ui_manager import Push, Pop, Update
+from rhizome.game.ui_manager import Push, Pop, Replace, Update
 from rhizome.game.logging import logger
 
 
 __all__ = ["GameState", "MenuState"]
 
+
+    
+DIRECTION_KEYS: Final = {
+    # Arrow keys
+    KeySym.LEFT: (-1, 0),
+    KeySym.RIGHT: (1, 0),
+    KeySym.UP: (0, -1),
+    KeySym.DOWN: (0, 1),
+    # Arrow key diagonals
+    KeySym.HOME: (-1, -1),
+    KeySym.END: (-1, 1),
+    KeySym.PAGEUP: (1, -1),
+    KeySym.PAGEDOWN: (1, 1),
+    # WASD
+    KeySym.w: (0, -1),
+    KeySym.s: (0,1),
+    KeySym.a: (-1,0),
+    KeySym.d: (1,0),
+    # Keypad
+    KeySym.KP_4: (-1, 0),
+    KeySym.KP_6: (1, 0),
+    KeySym.KP_8: (0, -1),
+    KeySym.KP_2: (0, 1),
+    KeySym.KP_7: (-1, -1),
+    KeySym.KP_1: (-1, 1),
+    KeySym.KP_9: (1, -1),
+    KeySym.KP_3: (1, 1),
+    # VI keys
+    KeySym.h: (-1, 0),
+    KeySym.l: (1, 0),
+    KeySym.k: (0, -1),
+    KeySym.j: (0, 1),
+    KeySym.y: (-1, -1),
+    KeySym.b: (-1, 1),
+    KeySym.u: (1, -1),
+    KeySym.n: (1, 1),
+    # Wait
+    KeySym.SPACE: (0,0)
+}
 
 
 @dataclass
@@ -58,45 +97,6 @@ class HistoryWindow:
 
 
 class GameState:
-    
-    DIRECTION_KEYS: Final = {
-        # Arrow keys
-        KeySym.LEFT: (-1, 0),
-        KeySym.RIGHT: (1, 0),
-        KeySym.UP: (0, -1),
-        KeySym.DOWN: (0, 1),
-        # Arrow key diagonals
-        KeySym.HOME: (-1, -1),
-        KeySym.END: (-1, 1),
-        KeySym.PAGEUP: (1, -1),
-        KeySym.PAGEDOWN: (1, 1),
-        # WASD
-        KeySym.w: (0, -1),
-        KeySym.s: (0,1),
-        KeySym.a: (-1,0),
-        KeySym.d: (1,0),
-        # Keypad
-        KeySym.KP_4: (-1, 0),
-        KeySym.KP_6: (1, 0),
-        KeySym.KP_8: (0, -1),
-        KeySym.KP_2: (0, 1),
-        KeySym.KP_7: (-1, -1),
-        KeySym.KP_1: (-1, 1),
-        KeySym.KP_9: (1, -1),
-        KeySym.KP_3: (1, 1),
-        # VI keys
-        KeySym.h: (-1, 0),
-        KeySym.l: (1, 0),
-        KeySym.k: (0, -1),
-        KeySym.j: (0, 1),
-        KeySym.y: (-1, -1),
-        KeySym.b: (-1, 1),
-        KeySym.u: (1, -1),
-        KeySym.n: (1, 1),
-        # Wait
-        KeySym.SPACE: (0,0)
-    }
-
     def __init__(self):
         self.console = Console(width=settings["map"]["width"], height=settings["map"]["height"])
         info_window_position = Vector(settings["camera"]["width"], 0)
@@ -118,11 +118,16 @@ class GameState:
     def on_event(self, event):
         match event:
             case KeyboardEvent(sym=key_sim, type=type_):
-                if type_ == "KEYDOWN" and key_sim in self.DIRECTION_KEYS:
-                    movement_direction = Vector(*self.DIRECTION_KEYS[key_sim])
-                    systems.move_player(movement_direction)
+                if type_ == "KEYDOWN" and key_sim in DIRECTION_KEYS:
+                    movement_direction = Vector(*DIRECTION_KEYS[key_sim])
+                    player = systems.move_player(movement_direction)
                     systems.move_enemies()
                     systems.move_camera(movement_direction)
+                    if systems.player_dead():
+                        new_level(new_game= False)
+                        return Push(game_over())
+                    self.info_window.subject = player
+                        
                 elif key_sim == KeySym.ESCAPE:
                     return Push(main_menu())
             case Quit():
@@ -136,9 +141,6 @@ class GameState:
         self.console.rgb['fg'][position.y, position.x] = graphic.fg
         self.console.rgb['bg'][position.y, position.x] = graphic.bg
 
-    def draw_log(self,console:Console):
-        messages = log_queue[-1:-self.log_length]
-        console.draw_frame(self)
 
     def draw(self, console: Console):
         world = get_world()
@@ -222,7 +224,9 @@ class MenuState:
                       self.name, alignment=tcod.constants.CENTER)
         console.print(
             self.position.x + 1, self.position.y + 1,
-            "\n".join(item_names)
+            "\n".join(item_names),
+            fg=[0xff, 0xff, 0xff],
+            bg=[0,0,0]
         )
 
     def on_event(self,event):
@@ -242,9 +246,29 @@ class MenuState:
         pass
 
 
+class MessageBox:
+    def __init__(self, message, alignment = tcod.constants.LEFT):
+        self.message = message
+        self.height = 10
+        self.width = settings["camera"]["width"] // 2
+        self.x = settings["camera"]["width"] // 4
+        self.y = settings["camera"]["height"] - (self.height + 3)
+        self.alignment = alignment
+
+    def on_event(self, event):
+        match event:
+            case KeyboardEvent(sym=sym,type="KEYDOWN"):
+                if sym in (KeySym.SPACE, KeySym.ESCAPE, KeySym.RETURN):
+                    return Pop()
+
+    def draw(self, console:Console, ):
+        console.draw_frame(self.x, self.y, self.width, self.height, clear=True)
+        console.print_box(self.x+1, self.y+1, self.width-2, self.height-2, self.message, alignment=self.alignment)
+
+
 def main_menu():
     def exit():
-        raise SystemExit
+        return [Pop(), Pop()]
     def restart():
         new_level()
         return [Pop(), Update(new_subject=get_player())]
@@ -254,3 +278,54 @@ def main_menu():
 
     return MenuState([continue_, restart, quit],Vector(10,10))
 
+def game_over():
+    def exit():
+        raise SystemExit
+    def restart():
+        new_level()
+        return [Pop(), Update(new_subject=get_player())]
+    restart = MenuState.MenuItem("Restart", restart)
+    quit = MenuState.MenuItem("Quit", exit)
+
+    return MenuState([restart, quit],Vector(10,10), name="Game Over")
+
+
+class IntroScreen:
+    def __init__(self, title):
+        self.width = settings["screen"]["width"]
+        self.height = settings["screen"]["height"]
+        self.game_title = title
+        self.player_location = Vector(self.width // 2, 12)
+
+
+    def draw(self, console: Console):
+        console.clear()
+        console.print_box(0,6, self.width, 1, self.game_title,
+                          alignment=tcod.constants.CENTER)
+        
+        console.print(self.player_location.x, self.player_location.y, 
+            settings["player"]["graphic"]["char"], 
+            fg = settings["player"]["graphic"]["fg"],
+        )
+
+        console.print_box(0, 20, self.width, 14,
+                          "You're a little mushroom. But you want to be...a BIG mushroom!\n"
+                          "Fight bugs. Absorb their flesh. Grow strong.\n\n\n"
+                          "Controls: WASD to move and SPACE to stand still.\n"
+                          "Press SPACE to begin!",
+                          alignment=tcod.constants.CENTER
+        )
+
+                          
+    def on_event(self, event):
+        match event:
+            case KeyboardEvent(sym=sym, type="KEYDOWN"):
+                match sym:
+                    case KeySym.RETURN | KeySym.RETURN2 | KeySym.SPACE:
+                        return Push(GameState())
+                    case KeySym.ESCAPE:
+                        return Pop()
+                    case _: 
+                        if sym in DIRECTION_KEYS:
+                            self.player_location += DIRECTION_KEYS[sym]
+        

@@ -5,7 +5,7 @@ from  tcod.ecs import Entity
 from tcod.map import compute_fov
 from tcod.path import Pathfinder, SimpleGraph
 from rhizome.game.components import Map, Position, Stats, Vector
-from rhizome.game.tags import Solid, PillBug, Spider
+from rhizome.game.tags import Beetle, Centipede, Solid, PillBug, Spider
 import rhizome.game.world
 
 
@@ -33,7 +33,7 @@ class Strategy(Protocol):
     def movement(self, entity) -> AiState:
         ...
 
-def move_towards(entity: Vector, target: Vector) -> Vector:
+def move_towards(entity: Vector, target: Vector, distance: int = 1) -> Vector:
     world = rhizome.game.world.world
     map = world[None].components[Map]
     cost = ~map
@@ -46,8 +46,10 @@ def move_towards(entity: Vector, target: Vector) -> Vector:
     pathfinder = Pathfinder(graph)
     pathfinder.add_root((entity.y, entity.x))
     path = pathfinder.path_to((target.y, target.x))
-    if len(path) > 1:
-        return Vector(path[1][1], path[1][0]) - entity
+    if len(path) > distance:
+        return Vector(path[-1][1], path[1][0]) - entity
+    elif len(path) > 1:
+        return Vector(path[-1][1], path[-1][0]) - entity
     else:
         return Vector(0,0)
 
@@ -152,8 +154,61 @@ class PillbugStrategy:
 
         raise ValueError(f"Unable to match state {self.state}")
 
-                
+@dataclass
+class BeetleStrategy: 
+    state: AiState = Wandering()
+
+    def next_state(self, entity: Entity):
+        stats = entity.components[Stats]
+        player = rhizome.game.world.player
+        player_position = player.components[Position]
+        distance = player_position - entity.components[Position]
+        adjacent = abs(distance.x) == 1 ^ abs(distance.y)==1
+        injured = stats.health < stats.max_health
+
+        match self.state:
+            case Wandering():
+                if adjacent and injured:
+                    return BeetleStrategy(Fighting())
+                else:
+                    return BeetleStrategy(Waiting(0))
+            case Fighting():
+                if not adjacent:
+                    return BeetleStrategy(Hunting())
+            case Hunting():
+                if adjacent:
+                    return BeetleStrategy(Fighting())
+                elif self.perseverance == 0:
+                    return BeetleStrategy(Wandering())
+                else:
+                    return BeetleStrategy(Hunting(), self.perseverance - 1)
+            case Waiting(_):
+                return BeetleStrategy(Wandering())
+
+
+    def movement(self, entity: Entity) -> Vector:
+        position = entity.components[Position]
+
+        match self.state:
+            case Waiting():
+                return Vector(0,0)
+            case Hunting():
+                target = rhizome.game.world.player.components[Position]
+                return move_towards(position, target, 2)
+            case Fighting():
+                target = rhizome.game.world.player.components[Position]
+                return move_towards(position, target, 1)
+            case Wandering():
+                rng = entity.registry[None].components[Random]
+                direction = rng.choice([(-1,0),(1,0),(0,1),(0,-1), (-2,0),(2,0),(0,2),(0,2)])
+                return Vector(*direction)
+
+        raise ValueError(f"Unable to match state {self.state}")
+
+
 STRATEGIES = {
     PillBug: PillbugStrategy,
-    Spider: SpiderStrategy
+    Spider: SpiderStrategy, 
+    Centipede: SpiderStrategy,
+    Beetle: BeetleStrategy
 }
