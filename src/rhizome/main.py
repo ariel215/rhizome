@@ -1,12 +1,11 @@
 #! python3 
 
 from tcod import context as tcontext, tileset, console as tconsole, event as tevent
-from .game import ui_states
-from .game.world import new_level, settings
-import pathlib
+from rhizome.game import ui_states
+from rhizome.game.world import new_level, settings
 from rhizome.game.ui_manager import *
 from rhizome.game.world import settings
-
+import pathlib
 
 HERE = pathlib.Path(__file__).parent
 
@@ -20,7 +19,6 @@ def main():
     tileset.procedural_block_elements(tileset=tiles)
     console = tconsole.Console(**settings["screen"])
     state_manager = UIManager([ui_states.IntroScreen(title="Rhizomatic")])
-    new_level(state_manager)
 
     with tcontext.new(console=console,tileset=tiles) as ctx:
         while True:

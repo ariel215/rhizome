@@ -222,20 +222,17 @@ class Stats:
     strength: int
     damage_range: Tuple[int,int] = (0,0) # variability of damage
     toughness: int = 0 # reduces damage taken by X
-    venom: int = 0 # chance to paralyze 
     toxicity: int = 0 # deal damage when hit
     camoflauge: int = 0 # makes it harder to be seen
-    digestion: int = 1
+    digestion: int = 1 # how quickly you absorb food
 
     def __str__(self):
-        healthbar = f"Health: {self.health}/{self.max_health} "
-        healthbar += "|" * ((10 * self.health ) // self.max_health)
+        health = f"Health: {self.health}/{self.max_health} "
+        healthbar = "|" * ((10 * self.health ) // self.max_health)
         strength = f"Strength: {self.strength}"
-        lines = [healthbar, strength]
+        lines = [health, healthbar, strength]
         if self.toughness:
-            lines += f"Toughness: {self.toughness}"
-        if self.venom:
-            lines += f"Venom: {self.venom}"
+            lines.append(f"Toughness: {self.toughness}")
         if self.toxicity: 
             lines += f"Toxicity: {self.toxicity}"
         if self.camoflauge:
@@ -246,7 +243,7 @@ class Stats:
         
         return "\n".join(lines)
 
-class Trait(Enum):
+class Trait(str, Enum):
     Shell = "shell"
     Fangs = "fangs"
     Jaws = "jaws"

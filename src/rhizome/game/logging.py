@@ -7,5 +7,5 @@ class Logger():
 
 logger = Logger()
 
-def log(message):
-    logger.log(message)
+def log(message:str):
+    logger.log(message.capitalize())

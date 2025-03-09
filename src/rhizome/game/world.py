@@ -89,7 +89,7 @@ def get_trait(rng: Random, trait_dict: dict):
     kinds = list(trait_dict.keys()) + [None]
     probabilities = list(trait_dict.values())
     probabilities.append(1 - sum(probabilities))
-    return rng.choices(kinds, probabilities)
+    return rng.choices(kinds, probabilities)[0]
 
 def scale(stats, level):
     factor = math.pow(1.3,level)
@@ -105,7 +105,7 @@ def scale(stats, level):
 def populate_enemies(world :Registry, open_positions, level_number: int):
     rng = world[None].components[Random]
     for (enemy_kind, enemy_settings) in settings['enemy'].items():
-        for _ in range(10):
+        for _ in range(5 * (level_number + 1)):
             enemy = world.new_entity()
             enemy.components[Position] = take_position(open_positions)
             stats = enemy.components[Stats] = Stats(enemy_settings["health"], enemy_settings["health"], enemy_settings["strength"])
@@ -122,16 +122,19 @@ def populate_enemies(world :Registry, open_positions, level_number: int):
 
 def acquire_trait(entity: Entity, trait: Trait):
     ent_stats = entity.components[Stats]
+    print(f"starting stats: {vars(ent_stats)}")
+    print(f"trait: {str(trait)}")
     if trait == Trait.Jaws:
-        ent_stats.strength += 1
+        ent_stats.strength = ent_stats.strength + 1
     elif trait == Trait.Shell:
         ent_stats.toughness += 1
     elif trait == Trait.Fangs: 
-        ent_stats.damage_range[-1] += 1
+        ent_stats.damage_range = ent_stats.damage_range[0], ent_stats.damage_range[1] + 1
     elif trait == Trait.VenomSacs:
-        ent_stats.venom += 1
+        ent_stats.digestion += 1
     elif trait == Trait.Bristles:
         ent_stats.toxicity += 1
+    print(f"ending stats: {vars(ent_stats)}")
 
 
 
@@ -144,7 +147,6 @@ def new_level(ui: UIManager | None , new_game: bool = True) -> Registry:
     world = Registry()
     # global RNG
     
-    world[None].components[Random] = Random()
 
     world[None].components[UIManager] = ui
     level_number = 0 if new_game else world[None].components[LevelNo] + 1
@@ -174,8 +176,8 @@ def new_level(ui: UIManager | None , new_game: bool = True) -> Registry:
         player = add_player(world,player_position,stats)
 
     populate_enemies(world, free_positions, level_number)
-    add_hole(world, player_position + (1,1))
-    # add_hole(world, hole_position)
+    # add_hole(world, player_position + (1,1))
+    add_hole(world, hole_position)
 
     add_camera(world,player_position)
     return world

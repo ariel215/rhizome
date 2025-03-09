@@ -5,7 +5,7 @@ from  tcod.ecs import Entity
 from tcod.map import compute_fov
 from tcod.path import Pathfinder, SimpleGraph
 from rhizome.game.components import Map, Position, Stats, Vector
-from rhizome.game.tags import Beetle, Centipede, Solid, PillBug, Spider
+from rhizome.game.tags import Beetle, Centipede, Player, Solid, PillBug, Spider
 import rhizome.game.world
 
 
@@ -47,11 +47,23 @@ def move_towards(entity: Vector, target: Vector, distance: int = 1) -> Vector:
     pathfinder.add_root((entity.y, entity.x))
     path = pathfinder.path_to((target.y, target.x))
     if len(path) > distance:
-        return Vector(path[-1][1], path[1][0]) - entity
+        return Vector(path[distance][1], path[distance][0]) - entity
     elif len(path) > 1:
         return Vector(path[-1][1], path[-1][0]) - entity
     else:
         return Vector(0,0)
+
+def can_move(entity: Entity, direction: Vector) -> bool:
+    world  = entity.registry
+    position = entity.components[Position] + direction
+    map = world[None].components[Map]
+    if position.y >= map.shape[0] or position.x >= map.shape[1]:
+        return False
+    if map[position.y,position.x]:
+        return False
+    q = world.Q.all_of(tags=[position, Solid]).none_of(tags=[Player])
+    return not bool(q)
+
 
 @dataclass
 class SpiderStrategy:
@@ -69,7 +81,8 @@ class SpiderStrategy:
                 return move_towards(position, target)
             case Wandering():
                 rng = entity.registry[None].components[Random]
-                direction = rng.choice([(-1,0),(1,0),(0,1),(0,-1)])
+                direction = rng.choice([pos for pos in ((-1,0),(1,0),(0,1),(0,-1)) 
+                                        if can_move(entity,pos)])
                 return Vector(*direction)
         raise ValueError(f"Unable to match state {self.state}")
 
@@ -138,6 +151,9 @@ class PillbugStrategy:
             case Waiting(_):
                 return PillbugStrategy(Wandering())
 
+        return self
+    
+
     def movement(self, entity: Entity) -> Vector:
         position = entity.components[Position]
 
@@ -149,7 +165,10 @@ class PillbugStrategy:
                 return move_towards(position, target)
             case Wandering():
                 rng = entity.registry[None].components[Random]
-                direction = rng.choice([(-1,0),(1,0),(0,1),(0,-1)])
+                direction = rng.choice([pos for pos in 
+                                       [(-1,0),(1,0),(0,1),(0,-1)]
+                                       if can_move(entity, pos)
+                ])
                 return Vector(*direction)
 
         raise ValueError(f"Unable to match state {self.state}")
@@ -157,6 +176,8 @@ class PillbugStrategy:
 @dataclass
 class BeetleStrategy: 
     state: AiState = Wandering()
+    alert_radius: int = 5
+    perseverance: int = 2
 
     def next_state(self, entity: Entity):
         stats = entity.components[Stats]
@@ -168,8 +189,8 @@ class BeetleStrategy:
 
         match self.state:
             case Wandering():
-                if adjacent and injured:
-                    return BeetleStrategy(Fighting())
+                if distance.x + distance.y  < self.alert_radius: 
+                    return BeetleStrategy(Hunting())
                 else:
                     return BeetleStrategy(Waiting(0))
             case Fighting():
@@ -181,10 +202,10 @@ class BeetleStrategy:
                 elif self.perseverance == 0:
                     return BeetleStrategy(Wandering())
                 else:
-                    return BeetleStrategy(Hunting(), self.perseverance - 1)
+                    return BeetleStrategy(Hunting(), self.alert_radius, self.perseverance - 1)
             case Waiting(_):
                 return BeetleStrategy(Wandering())
-
+        return self
 
     def movement(self, entity: Entity) -> Vector:
         position = entity.components[Position]
@@ -199,8 +220,13 @@ class BeetleStrategy:
                 target = rhizome.game.world.player.components[Position]
                 return move_towards(position, target, 1)
             case Wandering():
-                rng = entity.registry[None].components[Random]
-                direction = rng.choice([(-1,0),(1,0),(0,1),(0,-1), (-2,0),(2,0),(0,2),(0,2)])
+                world = entity.registry
+                rng = world[None].components[Random]
+                moves = [pos for pos in 
+                         [(-1,0),(1,0),(0,1),(0,-1), (-2,0),(2,0),(0,2),(0,2)]
+                         if can_move(entity, pos)
+                ]
+                direction = rng.choice(moves)
                 return Vector(*direction)
 
         raise ValueError(f"Unable to match state {self.state}")

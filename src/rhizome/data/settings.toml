@@ -26,6 +26,7 @@ fg = [0xc6, 0xd3, 0x13]
 health = 6
 strength = 3
 size_range = [2,3]
+damage_range = [0,2]
 traits = {shell =0.1, jaws=0.3 }
 [enemy.spider.graphic]
 char = "*"
@@ -35,6 +36,7 @@ fg = [0x89, 0x56, 0x17]
 health = 12
 strength = 1
 size_range = [1]
+damage_range = [0,1]
 traits = {shell = 0.5 }
 [enemy.pillbug.graphic]
 char = "∞"
@@ -44,6 +46,7 @@ fg = [0x98, 0x9b, 0x96]
 health = 10
 strength = 2
 size_range = [2,3,4]
+damage_range = [-1,2]
 traits = {bristles = 0.2, fangs = 0.4, "venom sacs" = 0.2}
 [enemy.centipede.graphic]
 char = "$"
@@ -52,8 +55,9 @@ fg = [0x95, 0xc6, 0x39]
 
 [enemy.beetle]
 health = 8
-strength  = 3
+strength  = 2
 size_range = [1,2,2]
+damage_range = [0,4]
 traits = {jaws  = 0.5, shell=0.5}
 [enemy.beetle.graphic]
 char = "Φ"

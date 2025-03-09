@@ -124,8 +124,7 @@ class GameState:
                     systems.move_enemies()
                     systems.move_camera(movement_direction)
                     if systems.player_dead():
-                        new_level(new_game= False)
-                        return Push(game_over())
+                        return Pop()
                     self.info_window.subject = player
                         
                 elif key_sim == KeySym.ESCAPE:
@@ -322,6 +321,7 @@ class IntroScreen:
             case KeyboardEvent(sym=sym, type="KEYDOWN"):
                 match sym:
                     case KeySym.RETURN | KeySym.RETURN2 | KeySym.SPACE:
+                        new_level(self)
                         return Push(GameState())
                     case KeySym.ESCAPE:
                         return Pop()

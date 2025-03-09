@@ -108,12 +108,15 @@ def player_dead():
 def digest(entity: Entity, corpse: Entity):
     size = corpse.components.get(Size)
     pstats = entity.components[Stats]
-    health_gained = 2 * min(pstats.digestion,size)
+    amount_eaten = min(pstats.digestion,size)
+    health_gained = 2 * amount_eaten
     pstats.health += health_gained
-    size -= health_gained
-    if size == 0:    
-        log(f"consuming {trait} has made you stronger")
+    size -= amount_eaten
+    if size <= 0:
+        log(f"consumed {corpse.components[Name]}")
         trait = corpse.components[Trait]
+        if trait: 
+            log(f"Its {trait} has made you stronger")
         world.acquire_trait(entity, trait)
         corpse.clear() 
     else:

@@ -1,6 +1,6 @@
 from typing import Final
 
-Player: Final = "player"
+Player: Final = "you"
 Actor: Final  = "actor"
 Item: Final = "item"
 Enemy: Final = "enemy"
