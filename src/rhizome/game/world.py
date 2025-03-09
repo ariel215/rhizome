@@ -139,17 +139,17 @@ def acquire_trait(entity: Entity, trait: Trait):
 
 
 
-def new_level(ui: UIManager | None , new_game: bool = True) -> Registry:
+def new_level(ui: UIManager | None = None , new_game: bool = True) -> Registry:
     global world
-    if ui is None:
-        ui = world[None].components[UIManager]
+    
+    level_number = 0 if new_game else world[None].components[LevelNo] + 1
+    ui = ui if ui is not None else world[None].components[UIManager]
 
     world = Registry()
     # global RNG
     
 
     world[None].components[UIManager] = ui
-    level_number = 0 if new_game else world[None].components[LevelNo] + 1
     world[None].components[LevelNo] = level_number
 
     global player
@@ -158,7 +158,7 @@ def new_level(ui: UIManager | None , new_game: bool = True) -> Registry:
     world[None].components[Map] = map
     free_positions = [idx for idx, value in np.ndenumerate(map) if not value]
 
-    rng = world[None].components[Random]
+    rng = world[None].components[Random] = Random()
     fns = [lambda p: p[0] < map.shape[0] / 3 and p[1] < map.shape[1] / 3,
             lambda p: p[0] < map.shape[0] / 3 and p[1] > 2 * map.shape[1] / 3,
             lambda p: p[0] > 2 * map.shape[0] / 3 and p[1] > 2 * map.shape[1] / 3,
@@ -176,8 +176,8 @@ def new_level(ui: UIManager | None , new_game: bool = True) -> Registry:
         player = add_player(world,player_position,stats)
 
     populate_enemies(world, free_positions, level_number)
-    # add_hole(world, player_position + (1,1))
-    add_hole(world, hole_position)
+    add_hole(world, player_position + (1,1))
+    # add_hole(world, hole_position)
 
     add_camera(world,player_position)
     return world

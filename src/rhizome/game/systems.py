@@ -62,7 +62,7 @@ def handle_trigger(entity1, entity2):
     if entity2.components[Name] == "Hole":
         assert Hole in entity2.tags
     if Player in entity1.tags and Hole in entity2.tags:
-        new_level(entity1.registry[None].components[UIManager])
+        new_level(entity1.registry[None].components[UIManager], new_game=False)
         return get_player()
     return entity1
     

@@ -18,7 +18,7 @@ def main():
     )
     tileset.procedural_block_elements(tileset=tiles)
     console = tconsole.Console(**settings["screen"])
-    state_manager = UIManager([ui_states.IntroScreen(title="Rhizomatic")])
+    state_manager = UIManager([ui_states.IntroScreen(title="Rhizome")])
 
     with tcontext.new(console=console,tileset=tiles) as ctx:
         while True:
